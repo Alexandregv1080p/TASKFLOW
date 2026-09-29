@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskFlow.Domain", "TaskFlow
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskFlow.Infrastructure", "TaskFlow.Infrastructure\TaskFlow.Infrastructure.csproj", "{50FC341E-E096-4E9D-BF5E-42D09B9A3EE9}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{4B3C4F44-0B27-4E9F-A882-D2E033B99439}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskFlow.UnitTests", "..\tests\TaskFlow.UnitTests\TaskFlow.UnitTests.csproj", "{EB448EB8-B060-4D28-BDBB-26078927E5D4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +40,12 @@ Global
 		{50FC341E-E096-4E9D-BF5E-42D09B9A3EE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{50FC341E-E096-4E9D-BF5E-42D09B9A3EE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{50FC341E-E096-4E9D-BF5E-42D09B9A3EE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB448EB8-B060-4D28-BDBB-26078927E5D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB448EB8-B060-4D28-BDBB-26078927E5D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB448EB8-B060-4D28-BDBB-26078927E5D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB448EB8-B060-4D28-BDBB-26078927E5D4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EB448EB8-B060-4D28-BDBB-26078927E5D4} = {4B3C4F44-0B27-4E9F-A882-D2E033B99439}
 	EndGlobalSection
 EndGlobal

@@ -392,7 +392,7 @@ Propriedades:
 * `Id`: Guid
 * `Title`: string
 * `Description`: string?
-* `Status`: TaskStatus
+* `Status`: TaskItemStatus
 * `Priority`: TaskPriority
 * `DueDate`: DateTime?
 * `ProjectId`: Guid
@@ -406,8 +406,10 @@ Propriedades:
 Criar o enum:
 
 ```text
-TaskStatus
+TaskItemStatus
 ```
+
+> Decisão: o nome `TaskStatus` colide com `System.Threading.Tasks.TaskStatus` (incluído nos usings implícitos do .NET), gerando erro de ambiguidade. Pelo mesmo motivo de `TaskItem`, o enum se chama `TaskItemStatus`.
 
 Valores:
 
@@ -428,6 +430,8 @@ IN_PROGRESS
   ▼
 DONE
 ```
+
+Regra implementada no MVP: a tarefa anda **um passo por vez**, para frente ou para trás (`Todo ↔ InProgress ↔ Done`). Não é permitido pular etapas (ex.: `Todo → Done`).
 
 O sistema poderá posteriormente permitir outras transições, mas o MVP deve permanecer simples.
 
@@ -497,7 +501,7 @@ Para TaskItem:
 ```csharp
 task.AssignTo(userId);
 
-task.ChangeStatus(TaskStatus.InProgress);
+task.ChangeStatus(TaskItemStatus.InProgress);
 
 task.ChangePriority(TaskPriority.High);
 ```
@@ -1783,13 +1787,13 @@ Evitar:
 
 # Fase 2 — Domain
 
-* [ ] Criar User
-* [ ] Criar Project
-* [ ] Criar TaskItem
-* [ ] Criar TaskStatus
-* [ ] Criar TaskPriority
-* [ ] Implementar regras básicas
-* [ ] Criar relacionamentos
+* [x] Criar User
+* [x] Criar Project
+* [x] Criar TaskItem
+* [x] Criar TaskItemStatus
+* [x] Criar TaskPriority
+* [x] Implementar regras básicas
+* [x] Criar relacionamentos (chaves `OwnerId`, `ProjectId`, `AssignedToId`; mapeamento no EF na Fase 3)
 
 ---
 
@@ -2241,7 +2245,7 @@ Ao implementar este projeto:
 ## Backend
 
 * [x] Solution criada
-* [ ] Domain
+* [x] Domain
 * [ ] Application
 * [ ] Infrastructure
 * [ ] API
