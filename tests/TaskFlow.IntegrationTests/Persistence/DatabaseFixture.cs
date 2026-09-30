@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Infrastructure.Persistence;
@@ -14,6 +17,21 @@ public class DatabaseFixture : IAsyncLifetime
 
     public WebApplicationFactory<Program> Api { get; } = new WebApplicationFactory<Program>()
         .WithWebHostBuilder(b => b.UseSetting("ConnectionStrings:Default", ConnectionString));
+
+    // Cliente HTTP já autenticado como um usuário novo e exclusivo do teste.
+    public async Task<HttpClient> CreateAuthenticatedClientAsync(string name = "Ana")
+    {
+        var client = Api.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/register",
+            new { name, email = $"{Guid.NewGuid():N}@example.com", password = "senha-segura-123" });
+        response.EnsureSuccessStatusCode();
+
+        var auth = await response.Content.ReadFromJsonAsync<JsonElement>();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", auth.GetProperty("accessToken").GetString());
+
+        return client;
+    }
 
     public TaskFlowDbContext CreateContext() =>
         new(new DbContextOptionsBuilder<TaskFlowDbContext>().UseNpgsql(ConnectionString).Options);

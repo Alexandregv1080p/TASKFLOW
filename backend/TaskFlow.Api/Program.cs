@@ -1,24 +1,60 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using TaskFlow.Api;
 using TaskFlow.Api.Middlewares;
 using TaskFlow.Application;
 using TaskFlow.Application.Common;
 using TaskFlow.Infrastructure;
 using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Infrastructure.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Em produção vem da variável de ambiente ConnectionStrings__Default.
+// Em produção vêm de variáveis de ambiente: ConnectionStrings__Default e Jwt__Secret.
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Connection string 'Default' não configurada.");
+var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(connectionString);
+builder.Services.AddInfrastructure(connectionString, jwt);
 
-var demoUser = new DemoCurrentUser();
-builder.Services.AddSingleton<ICurrentUser>(demoUser);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        // Mantém os nomes originais dos claims ("sub"), sem o mapeamento legado para URIs da Microsoft.
+        o.MapInboundClaims = false;
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = JwtTokenService.SigningKey(jwt),
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+        o.Events = new JwtBearerEvents
+        {
+            // 401 no mesmo formato de erro do resto da API.
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsJsonAsync(ErrorResponse.Create(
+                    StatusCodes.Status401Unauthorized, "Unauthorized", "Authentication is required."));
+            }
+        };
+    });
+
+// Tudo exige autenticação por padrão; exceções são marcadas com [AllowAnonymous].
+builder.Services.AddAuthorization(o =>
+    o.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
@@ -34,7 +70,21 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(o =>
+{
+    // Botão "Authorize" no Swagger: cole o accessToken retornado pelo login.
+    var scheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+    };
+    o.AddSecurityDefinition("Bearer", scheme);
+    o.AddSecurityRequirement(new OpenApiSecurityRequirement { [scheme] = [] });
+});
 
 builder.Services.AddHealthChecks().AddDbContextCheck<TaskFlowDbContext>("postgres");
 
@@ -43,10 +93,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<TaskFlowDbContext>();
-
-    await db.Database.MigrateAsync();
-    await demoUser.EnsureSeededAsync(db);
+    await scope.ServiceProvider.GetRequiredService<TaskFlowDbContext>().Database.MigrateAsync();
 
     app.UseSwagger();
     app.UseSwaggerUI();
@@ -56,6 +103,7 @@ app.UseExceptionHandler(_ => { });
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -63,7 +111,7 @@ app.MapControllers();
 app.MapHealthChecks("/health", new()
 {
     ResponseWriter = (context, report) => context.Response.WriteAsJsonAsync(new { status = report.Status.ToString() })
-});
+}).AllowAnonymous();
 
 app.Run();
 

@@ -23,7 +23,7 @@ public class PersistenceTests(DatabaseFixture db)
     public async Task Deve_salvar_e_ler_projeto_e_tarefa()
     {
         var (user, project) = await SeedProjectAsync();
-        var task = new TaskItem(project.Id, "Login", "JWT", TaskPriority.High, new DateTime(2026, 10, 5));
+        var task = new TaskItem(project.Id, 1, user.Id, "Login", "JWT", TaskPriority.High, new DateTime(2026, 10, 5));
         task.AssignTo(user.Id);
         task.ChangeStatus(TaskItemStatus.InProgress);
 
@@ -43,17 +43,32 @@ public class PersistenceTests(DatabaseFixture db)
             Assert.Equal(new DateTime(2026, 10, 5), saved.DueDate);
             Assert.Equal(user.Id, saved.AssignedToId);
             Assert.Equal(project.Id, saved.ProjectId);
+            Assert.Equal(1, saved.Number);
+            Assert.Equal(user.Id, saved.CreatedById);
         }
+    }
+
+    [Fact]
+    public async Task Numero_da_tarefa_e_unico_no_projeto()
+    {
+        var (user, project) = await SeedProjectAsync();
+
+        await using var context = db.CreateContext();
+        context.Tasks.AddRange(
+            new TaskItem(project.Id, 1, user.Id, "A", null, TaskPriority.Low, null),
+            new TaskItem(project.Id, 1, user.Id, "B", null, TaskPriority.Low, null));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
     }
 
     [Fact]
     public async Task Excluir_projeto_deve_excluir_suas_tarefas()
     {
-        var (_, project) = await SeedProjectAsync();
+        var (user, project) = await SeedProjectAsync();
 
         await using (var context = db.CreateContext())
         {
-            context.Tasks.Add(new TaskItem(project.Id, "Tarefa", null, TaskPriority.Low, null));
+            context.Tasks.Add(new TaskItem(project.Id, 1, user.Id, "Tarefa", null, TaskPriority.Low, null));
             await context.SaveChangesAsync();
         }
 
@@ -80,7 +95,7 @@ public class PersistenceTests(DatabaseFixture db)
     public async Task Tarefa_nao_pode_referenciar_projeto_inexistente()
     {
         await using var context = db.CreateContext();
-        context.Tasks.Add(new TaskItem(Guid.NewGuid(), "Órfã", null, TaskPriority.Low, null));
+        context.Tasks.Add(new TaskItem(Guid.NewGuid(), 1, Guid.NewGuid(), "Órfã", null, TaskPriority.Low, null));
 
         await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
     }

@@ -16,24 +16,27 @@ public record DashboardResponse(
     PriorityCounts TasksByPriority,
     IReadOnlyList<ProjectSummaryResponse> RecentProjects);
 
-public class DashboardService(ITaskFlowDbContext db, ProjectService projects)
+public class DashboardService(ITaskFlowDbContext db, ProjectService projects, ICurrentUser currentUser)
 {
     private const int RecentProjectsLimit = 5;
 
     public async Task<DashboardResponse> GetAsync(CancellationToken ct = default)
     {
-        var byStatus = await db.Tasks
+        var userId = currentUser.UserId;
+        var tasks = db.Tasks.Where(t => db.Projects.Any(p => p.Id == t.ProjectId && p.OwnerId == userId));
+
+        var byStatus = await tasks
             .GroupBy(t => t.Status)
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
-        var byPriority = await db.Tasks
+        var byPriority = await tasks
             .GroupBy(t => t.Priority)
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
         return new DashboardResponse(
-            await db.Projects.CountAsync(ct),
+            await db.Projects.CountAsync(p => p.OwnerId == userId, ct),
             byStatus.Values.Sum(),
             new StatusCounts(
                 byStatus.GetValueOrDefault(TaskItemStatus.Todo),

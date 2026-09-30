@@ -17,13 +17,37 @@ public class TaskItem : Entity
     public Guid ProjectId { get; private set; }
     public Guid? AssignedToId { get; private set; }
 
-    public TaskItem(Guid projectId, string title, string? description, TaskPriority priority, DateTime? dueDate)
+    // Sequencial dentro do projeto: forma a chave exibida (ex.: WEB-12).
+    public int Number { get; private set; }
+
+    // Nulo apenas em tarefas criadas antes da autenticação existir.
+    public Guid? CreatedById { get; private set; }
+
+    public TaskItem(
+        Guid projectId,
+        int number,
+        Guid createdById,
+        string title,
+        string? description,
+        TaskPriority priority,
+        DateTime? dueDate)
     {
+        if (number <= 0)
+            throw new DomainException("Number must be positive.");
+
         ProjectId = Guard.NotEmpty(projectId, nameof(ProjectId));
+        Number = number;
+        CreatedById = Guard.NotEmpty(createdById, nameof(CreatedById));
         Title = Guard.Required(title, TitleMaxLength, nameof(Title));
         Description = Guard.Optional(description, DescriptionMaxLength, nameof(Description));
         Priority = ValidPriority(priority);
         DueDate = dueDate;
+    }
+
+    // Usado pelo EF Core ao materializar do banco.
+    private TaskItem()
+    {
+        Title = null!;
     }
 
     public void Update(string title, string? description, DateTime? dueDate)

@@ -4,13 +4,19 @@ using TaskFlow.Domain.Entities;
 
 namespace TaskFlow.Application.Tasks;
 
-public class TaskService(ITaskFlowDbContext db)
+// Tarefas só são acessíveis através de projetos do usuário atual.
+public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser)
 {
     public async Task<TaskResponse> CreateAsync(Guid projectId, CreateTaskRequest request, CancellationToken ct = default)
     {
-        await EnsureProjectExistsAsync(projectId, ct);
+        await EnsureProjectAccessAsync(projectId, ct);
 
-        var task = new TaskItem(projectId, request.Title, request.Description, request.Priority, request.DueDate);
+        // ponytail: próximo número via MAX+1; duas criações simultâneas no mesmo projeto colidem no índice único
+        // (ProjectId, Number) e uma delas falha. Trocar por sequência por projeto se houver concorrência real.
+        var number = (await db.Tasks.Where(t => t.ProjectId == projectId).MaxAsync(t => (int?)t.Number, ct) ?? 0) + 1;
+
+        var task = new TaskItem(
+            projectId, number, currentUser.UserId, request.Title, request.Description, request.Priority, request.DueDate);
 
         db.Tasks.Add(task);
         await db.SaveChangesAsync(ct);
@@ -20,11 +26,11 @@ public class TaskService(ITaskFlowDbContext db)
 
     public async Task<IReadOnlyList<TaskResponse>> ListByProjectAsync(Guid projectId, CancellationToken ct = default)
     {
-        await EnsureProjectExistsAsync(projectId, ct);
+        await EnsureProjectAccessAsync(projectId, ct);
 
         var tasks = await db.Tasks.AsNoTracking()
             .Where(t => t.ProjectId == projectId)
-            .OrderBy(t => t.CreatedAt)
+            .OrderBy(t => t.Number)
             .ToListAsync(ct);
 
         return tasks.Select(TaskResponse.From).ToList();
@@ -81,12 +87,15 @@ public class TaskService(ITaskFlowDbContext db)
         return TaskResponse.From(task);
     }
 
-    private async Task<TaskItem> FindAsync(Guid id, CancellationToken ct) =>
-        await db.Tasks.FindAsync([id], ct) ?? throw new NotFoundException(nameof(TaskItem), id);
+    private IQueryable<TaskItem> Accessible() =>
+        db.Tasks.Where(t => db.Projects.Any(p => p.Id == t.ProjectId && p.OwnerId == currentUser.UserId));
 
-    private async Task EnsureProjectExistsAsync(Guid projectId, CancellationToken ct)
+    private async Task<TaskItem> FindAsync(Guid id, CancellationToken ct) =>
+        await Accessible().SingleOrDefaultAsync(t => t.Id == id, ct) ?? throw new NotFoundException(nameof(TaskItem), id);
+
+    private async Task EnsureProjectAccessAsync(Guid projectId, CancellationToken ct)
     {
-        if (!await db.Projects.AnyAsync(p => p.Id == projectId, ct))
+        if (!await db.Projects.AnyAsync(p => p.Id == projectId && p.OwnerId == currentUser.UserId, ct))
             throw new NotFoundException(nameof(Project), projectId);
     }
 }

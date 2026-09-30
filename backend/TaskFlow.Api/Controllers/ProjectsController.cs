@@ -1,12 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Application.Common;
 using TaskFlow.Application.Projects;
 
 namespace TaskFlow.Api.Controllers;
 
 [ApiController]
 [Route("api/projects")]
-public class ProjectsController(ProjectService projects, ICurrentUser currentUser) : ControllerBase
+public class ProjectsController(ProjectService projects) : ControllerBase
 {
     [HttpGet]
     public Task<IReadOnlyList<ProjectSummaryResponse>> List(CancellationToken ct) => projects.ListAsync(ct: ct);
@@ -18,7 +17,7 @@ public class ProjectsController(ProjectService projects, ICurrentUser currentUse
     [ProducesResponseType<ProjectResponse>(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(CreateProjectRequest request, CancellationToken ct)
     {
-        var project = await projects.CreateAsync(currentUser.UserId, request, ct);
+        var project = await projects.CreateAsync(request, ct);
 
         return CreatedAtAction(nameof(Get), new { id = project.Id }, project);
     }

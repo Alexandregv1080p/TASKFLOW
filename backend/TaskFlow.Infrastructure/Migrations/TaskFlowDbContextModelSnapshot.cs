@@ -60,12 +60,18 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("date");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Priority")
                         .IsRequired()
@@ -89,7 +95,10 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.HasIndex("AssignedToId");
 
-                    b.HasIndex("ProjectId");
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("ProjectId", "Number")
+                        .IsUnique();
 
                     b.ToTable("Tasks", (string)null);
                 });
@@ -138,6 +147,11 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.HasOne("TaskFlow.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("AssignedToId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("TaskFlow.Domain.Entities.Project", null)

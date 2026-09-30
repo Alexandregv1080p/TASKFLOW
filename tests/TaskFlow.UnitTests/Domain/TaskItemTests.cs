@@ -7,7 +7,7 @@ namespace TaskFlow.UnitTests.Domain;
 public class TaskItemTests
 {
     private static TaskItem NewTask() =>
-        new(Guid.NewGuid(), "Implementar login", null, TaskPriority.Medium, null);
+        new(Guid.NewGuid(), 1, Guid.NewGuid(), "Implementar login", null, TaskPriority.Medium, null);
 
     [Fact]
     public void Nova_tarefa_comeca_em_Todo_e_sem_responsavel()
@@ -21,7 +21,14 @@ public class TaskItemTests
     [Fact]
     public void Deve_rejeitar_titulo_vazio()
     {
-        Assert.Throws<DomainException>(() => new TaskItem(Guid.NewGuid(), " ", null, TaskPriority.Low, null));
+        Assert.Throws<DomainException>(() => new TaskItem(Guid.NewGuid(), 1, Guid.NewGuid(), " ", null, TaskPriority.Low, null));
+    }
+
+    [Fact]
+    public void Deve_exigir_numero_positivo_e_criador()
+    {
+        Assert.Throws<DomainException>(() => new TaskItem(Guid.NewGuid(), 0, Guid.NewGuid(), "Login", null, TaskPriority.Low, null));
+        Assert.Throws<DomainException>(() => new TaskItem(Guid.NewGuid(), 1, Guid.Empty, "Login", null, TaskPriority.Low, null));
     }
 
     [Fact]

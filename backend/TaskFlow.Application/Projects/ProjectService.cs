@@ -5,14 +5,13 @@ using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Application.Projects;
 
-public class ProjectService(ITaskFlowDbContext db)
+// Todo acesso é restrito aos projetos do usuário atual. Projeto de outro usuário responde 404,
+// sem revelar que ele existe.
+public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser)
 {
-    public async Task<ProjectResponse> CreateAsync(Guid ownerId, CreateProjectRequest request, CancellationToken ct = default)
+    public async Task<ProjectResponse> CreateAsync(CreateProjectRequest request, CancellationToken ct = default)
     {
-        if (!await db.Users.AnyAsync(u => u.Id == ownerId, ct))
-            throw new NotFoundException(nameof(User), ownerId);
-
-        var project = new Project(request.Name, request.Description, ownerId);
+        var project = new Project(request.Name, request.Description, currentUser.UserId);
 
         db.Projects.Add(project);
         await db.SaveChangesAsync(ct);
@@ -20,10 +19,9 @@ public class ProjectService(ITaskFlowDbContext db)
         return ProjectResponse.From(project);
     }
 
-    // ponytail: lista todos os projetos; filtro por dono/membro entra com a autorização (Fase 7).
     public async Task<IReadOnlyList<ProjectSummaryResponse>> ListAsync(int? limit = null, CancellationToken ct = default)
     {
-        var query = db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).AsQueryable();
+        var query = Owned().AsNoTracking().OrderByDescending(p => p.CreatedAt).AsQueryable();
 
         if (limit is { } take)
             query = query.Take(take);
@@ -59,6 +57,8 @@ public class ProjectService(ITaskFlowDbContext db)
         await db.SaveChangesAsync(ct);
     }
 
+    private IQueryable<Project> Owned() => db.Projects.Where(p => p.OwnerId == currentUser.UserId);
+
     private async Task<Project> FindAsync(Guid id, CancellationToken ct) =>
-        await db.Projects.FindAsync([id], ct) ?? throw new NotFoundException(nameof(Project), id);
+        await Owned().SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException(nameof(Project), id);
 }

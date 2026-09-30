@@ -6,9 +6,13 @@ using TaskFlow.IntegrationTests.Persistence;
 namespace TaskFlow.IntegrationTests.Api;
 
 [Collection(DatabaseCollection.Name)]
-public class ApiTests(DatabaseFixture db)
+public class ApiTests(DatabaseFixture db) : IAsyncLifetime
 {
-    private readonly HttpClient _client = db.Api.CreateClient();
+    private HttpClient _client = null!;
+
+    public async Task InitializeAsync() => _client = await db.CreateAuthenticatedClientAsync();
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     private async Task<JsonElement> CreateProjectAsync()
     {
@@ -18,7 +22,7 @@ public class ApiTests(DatabaseFixture db)
         return await response.Content.ReadFromJsonAsync<JsonElement>();
     }
 
-    private static async Task AssertErrorAsync(HttpResponseMessage response, HttpStatusCode status)
+    internal static async Task AssertErrorAsync(HttpResponseMessage response, HttpStatusCode status)
     {
         Assert.Equal(status, response.StatusCode);
 
@@ -127,10 +131,12 @@ public class ApiTests(DatabaseFixture db)
         Assert.Equal(2, summary.GetProperty("taskCount").GetInt32());
         Assert.Equal(1, summary.GetProperty("doneCount").GetInt32());
 
+        // Usuário novo por teste: o dashboard contém exatamente os dados criados aqui.
         var dashboard = await _client.GetFromJsonAsync<JsonElement>("/api/dashboard");
-        Assert.True(dashboard.GetProperty("totalTasks").GetInt32() >= 2);
-        Assert.True(dashboard.GetProperty("tasksByStatus").GetProperty("done").GetInt32() >= 1);
-        Assert.True(dashboard.GetProperty("tasksByPriority").GetProperty("high").GetInt32() >= 1);
+        Assert.Equal(1, dashboard.GetProperty("totalProjects").GetInt32());
+        Assert.Equal(2, dashboard.GetProperty("totalTasks").GetInt32());
+        Assert.Equal(1, dashboard.GetProperty("tasksByStatus").GetProperty("done").GetInt32());
+        Assert.Equal(1, dashboard.GetProperty("tasksByPriority").GetProperty("high").GetInt32());
         Assert.Equal(projectId, dashboard.GetProperty("recentProjects")[0].GetProperty("id").GetString());
     }
 

@@ -33,6 +33,12 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             .HasForeignKey(t => t.AssignedToId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(t => t.ProjectId);
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(t => t.CreatedById)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Número único dentro do projeto; o índice também atende as buscas por ProjectId.
+        builder.HasIndex(t => new { t.ProjectId, t.Number }).IsUnique();
     }
 }
