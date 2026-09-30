@@ -1,30 +1,46 @@
 import { ArrowLeftIcon, PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react'
-import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Link, Outlet, useNavigate, useParams } from 'react-router-dom'
 import { ErrorMessage, Loading } from '../components/Feedback'
 import { KanbanBoard } from '../components/KanbanBoard'
 import { ProjectForm } from '../components/ProjectForm'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../services/api'
-import type { ProjectInput, Task, TaskInput, TaskStatus } from '../types'
+import type { Project, ProjectInput, Task, TaskInput, TaskStatus, UserSummary } from '../types'
+import { projectKey } from '../utils/format'
+
+// Compartilhado com o modal de detalhe da tarefa (rota filha).
+export interface ProjectOutletContext {
+  project: Project
+  tasks: Task[]
+  users: UserSummary[]
+  keyPrefix: string
+  replaceTask: (task: Task) => void
+  removeTask: (id: string) => void
+}
 
 export function ProjectDetails() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const { data, loading, error, reload, setData } = useAsync(
-    () => Promise.all([api.getProject(id), api.listTasks(id)]),
+    () => Promise.all([api.getProject(id), api.listTasks(id), api.listUsers()]),
     [id],
   )
   const [editing, setEditing] = useState(false)
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string>()
+  const usersById = useMemo(() => new Map((data?.[2] ?? []).map((u) => [u.id, u])), [data])
 
   if (loading && !data) return <Loading layout="board" />
   if (error) return <ErrorMessage message={error} onRetry={reload} />
   if (!data) return null
 
-  const [project, tasks] = data
+  const [project, tasks, users] = data
+  const keyPrefix = projectKey(project.name)
   const done = tasks.filter((t) => t.status === 'Done').length
+
+  const replaceTask = (task: Task) => setData(([p, t, u]) => [p, t.map((x) => (x.id === task.id ? task : x)), u])
+  const removeTask = (taskId: string) => setData(([p, t, u]) => [p, t.filter((x) => x.id !== taskId), u])
 
   async function run(action: () => Promise<void>, taskId: string | null = null) {
     setBusyTaskId(taskId)
@@ -40,7 +56,7 @@ export function ProjectDetails() {
 
   async function updateProject(input: ProjectInput) {
     const updated = await api.updateProject(id, input)
-    setData(([, t]) => [updated, t])
+    setData(([, t, u]) => [updated, t, u])
     setEditing(false)
   }
 
@@ -52,25 +68,26 @@ export function ProjectDetails() {
     })
   }
 
+  // Tarefa criada abre direto no detalhe, para completar descrição, responsável e prazo.
   async function createTask(input: TaskInput) {
     const task = await api.createTask(id, input)
-    setData(([p, t]) => [p, [...t, task]])
+    setData(([p, t, u]) => [p, [...t, task], u])
+    navigate(`tasks/${task.id}`)
   }
 
   function moveTask(task: Task, status: TaskStatus) {
-    run(async () => {
-      const updated = await api.changeTaskStatus(task.id, status)
-      setData(([p, t]) => [p, t.map((x) => (x.id === updated.id ? updated : x))])
-    }, task.id)
+    run(async () => replaceTask(await api.changeTaskStatus(task.id, status)), task.id)
   }
 
   function deleteTask(task: Task) {
     if (!window.confirm(`Excluir a tarefa "${task.title}"?`)) return
     run(async () => {
       await api.deleteTask(task.id)
-      setData(([p, t]) => [p, t.filter((x) => x.id !== task.id)])
+      removeTask(task.id)
     }, task.id)
   }
+
+  const outletContext: ProjectOutletContext = { project, tasks, users, keyPrefix, replaceTask, removeTask }
 
   return (
     <>
@@ -98,7 +115,12 @@ export function ProjectDetails() {
               <PencilSimpleIcon size={16} aria-hidden="true" />
               Editar
             </button>
-            <button className="icon-btn icon-btn--danger icon-btn--lg" onClick={deleteProject} aria-label="Excluir projeto" title="Excluir projeto">
+            <button
+              className="icon-btn icon-btn--danger icon-btn--lg"
+              onClick={deleteProject}
+              aria-label="Excluir projeto"
+              title="Excluir projeto"
+            >
               <TrashIcon size={18} />
             </button>
           </div>
@@ -118,11 +140,15 @@ export function ProjectDetails() {
 
       <KanbanBoard
         tasks={tasks}
+        keyPrefix={keyPrefix}
+        usersById={usersById}
         busyTaskId={busyTaskId}
         onCreate={createTask}
         onMove={moveTask}
         onDelete={deleteTask}
       />
+
+      <Outlet context={outletContext} />
     </>
   )
 }

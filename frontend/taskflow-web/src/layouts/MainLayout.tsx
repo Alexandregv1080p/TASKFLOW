@@ -1,7 +1,11 @@
-import { FolderSimpleIcon, KanbanIcon, SquaresFourIcon } from '@phosphor-icons/react'
+import { FolderSimpleIcon, KanbanIcon, SignOutIcon, SquaresFourIcon } from '@phosphor-icons/react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useAuth } from '../auth/context'
+import { Avatar } from '../components/Avatar'
 
 export function MainLayout() {
+  const { user, logout } = useAuth()
+
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -23,13 +27,15 @@ export function MainLayout() {
           </NavLink>
         </nav>
 
-        {/* Usuário demo até a autenticação (Fase 7). */}
-        <div className="sidebar__user">
-          <span className="avatar" aria-hidden="true">
-            UD
-          </span>
-          <span>Usuário Demo</span>
-        </div>
+        {user && (
+          <div className="sidebar__user">
+            <Avatar name={user.name} />
+            <span className="sidebar__user-name">{user.name}</span>
+            <button className="icon-btn" onClick={logout} aria-label="Sair" title="Sair">
+              <SignOutIcon size={17} />
+            </button>
+          </div>
+        )}
       </aside>
 
       <main className="content">

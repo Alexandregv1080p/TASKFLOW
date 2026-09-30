@@ -1,15 +1,20 @@
 import { ArrowLeftIcon, ArrowRightIcon, CalendarBlankIcon, TrashIcon, WarningIcon } from '@phosphor-icons/react'
-import type { Task, TaskStatus } from '../types'
+import { Link } from 'react-router-dom'
+import type { Task, TaskStatus, UserSummary } from '../types'
 import { PRIORITY_LABEL, STATUSES, STATUS_LABEL, formatDate, isOverdue } from '../utils/format'
+import { Avatar } from './Avatar'
+import { PriorityIcon } from './PriorityIcon'
 
 interface Props {
   task: Task
+  taskKey: string
+  assignee?: UserSummary
   busy: boolean
   onMove: (task: Task, status: TaskStatus) => void
   onDelete: (task: Task) => void
 }
 
-export function TaskCard({ task, busy, onMove, onDelete }: Props) {
+export function TaskCard({ task, taskKey, assignee, busy, onMove, onDelete }: Props) {
   // O domínio só permite andar uma coluna por vez; os botões refletem isso.
   const index = STATUSES.indexOf(task.status)
   const previous = STATUSES[index - 1]
@@ -18,12 +23,15 @@ export function TaskCard({ task, busy, onMove, onDelete }: Props) {
 
   return (
     <article className="task-card" aria-busy={busy}>
-      <h3 className="task-card__title">{task.title}</h3>
+      {/* O link do título cobre o card inteiro (::after); os botões ficam acima dele. */}
+      <h3 className="task-card__title">
+        <Link to={`tasks/${task.id}`} className="task-card__link">
+          {task.title}
+        </Link>
+      </h3>
       {task.description && <p className="task-card__description clamp">{task.description}</p>}
 
-      <footer className="task-card__footer">
-        <span className={`badge badge--${task.priority.toLowerCase()}`}>{PRIORITY_LABEL[task.priority]}</span>
-
+      <div className="task-card__meta">
         {task.dueDate && (
           <span className={overdue ? 'task-card__due task-card__due--late' : 'task-card__due'}>
             {overdue ? (
@@ -35,6 +43,13 @@ export function TaskCard({ task, busy, onMove, onDelete }: Props) {
             {overdue && <span className="sr-only"> (atrasada)</span>}
           </span>
         )}
+      </div>
+
+      <footer className="task-card__footer">
+        <span className="task-card__key" title={`Prioridade ${PRIORITY_LABEL[task.priority]}`}>
+          <PriorityIcon priority={task.priority} size={14} />
+          {taskKey}
+        </span>
 
         <div className="task-card__actions">
           {previous && (
@@ -69,6 +84,12 @@ export function TaskCard({ task, busy, onMove, onDelete }: Props) {
             <TrashIcon size={15} />
           </button>
         </div>
+
+        {assignee ? (
+          <Avatar name={assignee.name} size="sm" />
+        ) : (
+          <span className="avatar avatar--sm avatar--empty" title="Sem responsável" aria-hidden="true" />
+        )}
       </footer>
     </article>
   )

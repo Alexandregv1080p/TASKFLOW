@@ -4,6 +4,23 @@ export type TaskStatus = 'Todo' | 'InProgress' | 'Done'
 
 export type TaskPriority = 'Low' | 'Medium' | 'High'
 
+export interface User {
+  id: string
+  name: string
+  email: string
+}
+
+export interface UserSummary {
+  id: string
+  name: string
+}
+
+export interface AuthResponse {
+  accessToken: string
+  expiresAt: string
+  user: User
+}
+
 export interface Project {
   id: string
   name: string
@@ -24,12 +41,14 @@ export interface ProjectSummary {
 export interface Task {
   id: string
   projectId: string
+  number: number
   title: string
   description: string | null
   status: TaskStatus
   priority: TaskPriority
   dueDate: string | null
   assignedToId: string | null
+  createdById: string | null
   createdAt: string
 }
 

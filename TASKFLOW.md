@@ -1069,6 +1069,14 @@ Exemplo:
 }
 ```
 
+Implementado:
+
+* `register` e `login` retornam `{ accessToken, expiresAt, user }`; `me` retorna `{ id, name, email }`.
+* Senha: 8 a 128 caracteres, armazenada com o `PasswordHasher` do ASP.NET Core Identity (PBKDF2 com salt).
+* Login com e-mail inexistente e com senha errada devolve a **mesma** resposta 401 (não revela quais e-mails existem). E-mail já cadastrado → 409.
+* JWT HS256 com `sub`, `name`, `jti`; validade de 60 min. Configuração na seção `Jwt` (`Issuer`, `Audience`, `ExpirationMinutes`); o segredo **não** fica no `appsettings.json`: em desenvolvimento está no `appsettings.Development.json`, fora dele vem de `Jwt__Secret` (mínimo 32 caracteres, validado na inicialização).
+* Frontend guarda o token em `localStorage` e encerra a sessão ao receber 401. Trade-off documentado em `services/api.ts`: cookie httpOnly protegeria contra XSS, mas exigiria proteção CSRF.
+
 ---
 
 # 34. Autorização
@@ -1089,6 +1097,13 @@ Admin
 ```
 
 A autorização deverá impedir que um usuário acesse ou modifique projetos aos quais não possui acesso.
+
+Implementado:
+
+* Política padrão (`FallbackPolicy`) exige usuário autenticado em **todos** os endpoints; só `register`, `login` e `/health` são anônimos.
+* Cada usuário vê apenas os projetos que criou, e as tarefas desses projetos; dashboard também é por usuário. Recurso de outro usuário responde **404** (não revela que existe).
+* Papéis (`User`/`Admin`) e membros de projeto ainda não foram criados: sem um caso de uso que precise deles, seriam código sem uso. Entram quando houver compartilhamento de projetos.
+* `GET /api/users` lista apenas `id` e `name` (para escolher responsável), sem expor e-mails.
 
 ---
 
@@ -1914,14 +1929,21 @@ Decisões do frontend:
 
 # Fase 7 — Authentication
 
-* [ ] Criar User
-* [ ] Criar Register
-* [ ] Criar Login
-* [ ] Password hashing
-* [ ] JWT
-* [ ] Authentication middleware
-* [ ] Authorization
-* [ ] Proteger endpoints
+* [x] Criar User
+* [x] Criar Register
+* [x] Criar Login
+* [x] Password hashing
+* [x] JWT
+* [x] Authentication middleware
+* [x] Authorization (projetos por dono; papéis adiados, ver seção 34)
+* [x] Proteger endpoints
+
+Junto com a Fase 7:
+
+* Tarefas ganharam **número sequencial por projeto** e **criador** (migration `AddTaskNumberAndCreator`, que numera as tarefas existentes). A chave exibida é `SIGLA-N`, com a sigla derivada do nome do projeto no frontend (ex.: "Website Institucional" → `WI-1`).
+* **Detalhe da tarefa no estilo Jira**: modal com URL própria (`/projects/:id/tasks/:taskId`), breadcrumb com a chave, título e descrição editáveis no lugar, status em dropdown (só transições permitidas) e painel "Detalhes" com responsável ("Atribuir a mim"), criador, prioridade com ícone, data limite e data de criação. Clicar no card abre o detalhe; a tarefa recém-criada abre direto nele. Esc, clique fora e o botão fechar voltam ao quadro.
+* Telas de login e cadastro; rotas protegidas redirecionam para o login e voltam à página pedida depois de entrar.
+* O antigo usuário demo foi removido. Projetos criados por ele em bancos de desenvolvimento antigos ficam inacessíveis (ninguém consegue logar como ele).
 
 ---
 

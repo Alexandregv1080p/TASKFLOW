@@ -1,17 +1,19 @@
-import type { Task, TaskInput, TaskStatus } from '../types'
+import type { Task, TaskInput, TaskStatus, UserSummary } from '../types'
 import { STATUSES, STATUS_LABEL } from '../utils/format'
 import { TaskCard } from './TaskCard'
 import { TaskComposer } from './TaskComposer'
 
 interface Props {
   tasks: Task[]
+  keyPrefix: string
+  usersById: Map<string, UserSummary>
   busyTaskId: string | null
   onCreate: (input: TaskInput) => Promise<void>
   onMove: (task: Task, status: TaskStatus) => void
   onDelete: (task: Task) => void
 }
 
-export function KanbanBoard({ tasks, busyTaskId, onCreate, onMove, onDelete }: Props) {
+export function KanbanBoard({ tasks, keyPrefix, usersById, busyTaskId, onCreate, onMove, onDelete }: Props) {
   return (
     <div className="kanban">
       {STATUSES.map((status) => {
@@ -30,6 +32,8 @@ export function KanbanBoard({ tasks, busyTaskId, onCreate, onMove, onDelete }: P
                 <TaskCard
                   key={task.id}
                   task={task}
+                  taskKey={`${keyPrefix}-${task.number}`}
+                  assignee={task.assignedToId ? usersById.get(task.assignedToId) : undefined}
                   busy={busyTaskId === task.id}
                   onMove={onMove}
                   onDelete={onDelete}
