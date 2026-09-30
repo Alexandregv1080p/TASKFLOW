@@ -6,9 +6,11 @@ type LoadingLayout = 'dashboard' | 'grid' | 'board'
 export function Loading({ layout }: { layout: LoadingLayout }) {
   return (
     <div role="status" aria-label="Carregando">
+      <div className="skeleton skeleton--title" />
+
       {layout === 'dashboard' && (
         <div className="stats">
-          {Array.from({ length: 5 }, (_, i) => (
+          {Array.from({ length: 4 }, (_, i) => (
             <div key={i} className="skeleton skeleton--stat" />
           ))}
         </div>

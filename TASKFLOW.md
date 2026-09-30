@@ -1902,6 +1902,8 @@ Decisões do frontend:
 * Linguagem visual: neutros zinc + um único acento cobalto; cores de status/prioridade só em badges, barras e bordas. Raios: cards 12px, controles 8px, badges em pílula. Contraste WCAG AA nos dois temas.
 * Movimento com propósito: botões com `scale(0.97)` ao pressionar; card de tarefa entra com opacity + translateY(4px) em 200ms (`@starting-style`) ao ser criado ou mudar de coluna; barras de progresso animam `transform: scaleX` (não `width`); hover só em dispositivos com mouse; tudo respeita `prefers-reduced-motion`.
 * Loading com skeletons no formato do conteúdo final (dashboard, grade, kanban).
+* Layout: sidebar de altura total (marca, navegação, usuário), conteúdo até 1440px e cabeçalho de página padronizado. Fonte Geist auto-hospedada (`@fontsource-variable/geist`, sem CDN).
+* Criação de tarefa estilo Trello: "+ Nova tarefa" dentro da coluna A fazer, formulário compacto que continua aberto após adicionar (Esc fecha). Criação de projeto por botão no cabeçalho, que leva direto ao quadro do novo projeto.
 * Em dev o Vite (`http://localhost:5173`) faz proxy de `/api` e `/health` para a API — mesma origem, sem necessidade de CORS. Em produção o papel será do servidor web do container (Fase 9).
 * `useAsync` (hook) centraliza loading/erro/reload; mutações atualizam o estado local sem recarregar a página.
 * Os botões do Kanban só movem uma coluna por vez, espelhando a regra do domínio. Prazo vencido aparece como "Atrasada".

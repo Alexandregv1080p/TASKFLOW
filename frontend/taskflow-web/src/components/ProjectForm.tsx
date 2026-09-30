@@ -5,7 +5,7 @@ interface Props {
   initial?: ProjectInput
   submitLabel: string
   onSubmit: (input: ProjectInput) => Promise<void>
-  onCancel?: () => void
+  onCancel: () => void
 }
 
 export function ProjectForm({ initial, submitLabel, onSubmit, onCancel }: Props) {
@@ -21,36 +21,40 @@ export function ProjectForm({ initial, submitLabel, onSubmit, onCancel }: Props)
 
     try {
       await onSubmit({ name, description: description.trim() || null })
-      if (!initial) {
-        setName('')
-        setDescription('')
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar.')
-    } finally {
       setSaving(false)
     }
   }
 
   return (
-    <form className="card form" onSubmit={handleSubmit}>
-      <label>
-        Nome
-        <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} placeholder="Ex.: Website" />
+    <form className="card project-form" onSubmit={handleSubmit} onKeyDown={(e) => e.key === 'Escape' && onCancel()}>
+      <label className="field">
+        <span className="field__label">Nome</span>
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          maxLength={100}
+          placeholder="Ex.: Website institucional"
+        />
       </label>
-      <label>
-        Descrição
+      <label className="field">
+        <span className="field__label">Descrição</span>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} rows={2} />
       </label>
 
-      {error && <p className="form__error" role="alert">{error}</p>}
+      {error && (
+        <p className="field__error" role="alert">
+          {error}
+        </p>
+      )}
 
-      <div className="form__actions">
-        {onCancel && (
-          <button type="button" className="btn btn--ghost" onClick={onCancel}>
-            Cancelar
-          </button>
-        )}
+      <div className="project-form__actions">
+        <button type="button" className="btn btn--ghost" onClick={onCancel}>
+          Cancelar
+        </button>
         <button className="btn btn--primary" disabled={saving}>
           {saving ? 'Salvando…' : submitLabel}
         </button>

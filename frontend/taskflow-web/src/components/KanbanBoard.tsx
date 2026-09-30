@@ -1,31 +1,32 @@
-import type { Task, TaskStatus } from '../types'
+import type { Task, TaskInput, TaskStatus } from '../types'
 import { STATUSES, STATUS_LABEL } from '../utils/format'
 import { TaskCard } from './TaskCard'
+import { TaskComposer } from './TaskComposer'
 
 interface Props {
   tasks: Task[]
   busyTaskId: string | null
+  onCreate: (input: TaskInput) => Promise<void>
   onMove: (task: Task, status: TaskStatus) => void
   onDelete: (task: Task) => void
 }
 
-export function KanbanBoard({ tasks, busyTaskId, onMove, onDelete }: Props) {
+export function KanbanBoard({ tasks, busyTaskId, onCreate, onMove, onDelete }: Props) {
   return (
     <div className="kanban">
       {STATUSES.map((status) => {
         const column = tasks.filter((t) => t.status === status)
 
         return (
-          <section key={status} className={`kanban__column kanban__column--${status.toLowerCase()}`}>
+          <section key={status} className="kanban__column" aria-label={STATUS_LABEL[status]}>
             <header className="kanban__header">
-              <h3>{STATUS_LABEL[status]}</h3>
+              <span className={`status-dot status-dot--${status.toLowerCase()}`} aria-hidden="true" />
+              <h2>{STATUS_LABEL[status]}</h2>
               <span className="kanban__count">{column.length}</span>
             </header>
 
-            {column.length === 0 ? (
-              <p className="kanban__empty">Nenhuma tarefa</p>
-            ) : (
-              column.map((task) => (
+            <div className="kanban__list">
+              {column.map((task) => (
                 <TaskCard
                   key={task.id}
                   task={task}
@@ -33,8 +34,14 @@ export function KanbanBoard({ tasks, busyTaskId, onMove, onDelete }: Props) {
                   onMove={onMove}
                   onDelete={onDelete}
                 />
-              ))
-            )}
+              ))}
+
+              {status === 'Todo' ? (
+                <TaskComposer onSubmit={onCreate} />
+              ) : (
+                column.length === 0 && <p className="kanban__empty">Nenhuma tarefa</p>
+              )}
+            </div>
           </section>
         )
       })}

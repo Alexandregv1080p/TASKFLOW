@@ -1,10 +1,9 @@
-import { ArrowLeftIcon } from '@phosphor-icons/react'
+import { ArrowLeftIcon, PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ErrorMessage, Loading } from '../components/Feedback'
 import { KanbanBoard } from '../components/KanbanBoard'
 import { ProjectForm } from '../components/ProjectForm'
-import { TaskForm } from '../components/TaskForm'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../services/api'
 import type { ProjectInput, Task, TaskInput, TaskStatus } from '../types'
@@ -25,6 +24,7 @@ export function ProjectDetails() {
   if (!data) return null
 
   const [project, tasks] = data
+  const done = tasks.filter((t) => t.status === 'Done').length
 
   async function run(action: () => Promise<void>, taskId: string | null = null) {
     setBusyTaskId(taskId)
@@ -87,27 +87,42 @@ export function ProjectDetails() {
           onCancel={() => setEditing(false)}
         />
       ) : (
-        <div className="page-header">
-          <div>
+        <header className="page-header">
+          <div className="page-header__text">
             <h1>{project.name}</h1>
-            {project.description && <p className="muted">{project.description}</p>}
+            {project.description && <p className="page-header__description">{project.description}</p>}
           </div>
+
           <div className="page-header__actions">
             <button className="btn btn--ghost" onClick={() => setEditing(true)}>
+              <PencilSimpleIcon size={16} aria-hidden="true" />
               Editar
             </button>
-            <button className="btn btn--danger-ghost" onClick={deleteProject}>
-              Excluir
+            <button className="icon-btn icon-btn--danger icon-btn--lg" onClick={deleteProject} aria-label="Excluir projeto" title="Excluir projeto">
+              <TrashIcon size={18} />
             </button>
           </div>
-        </div>
+        </header>
       )}
+
+      <div className="project-progress">
+        <span className="project-progress__label">
+          <strong>{done}</strong> de {tasks.length} {tasks.length === 1 ? 'tarefa concluída' : 'tarefas concluídas'}
+        </span>
+        <div className="progress" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={tasks.length}>
+          <div className="progress__bar" style={{ transform: `scaleX(${tasks.length ? done / tasks.length : 0})` }} />
+        </div>
+      </div>
 
       {actionError && <ErrorMessage message={actionError} />}
 
-      <TaskForm onSubmit={createTask} />
-
-      <KanbanBoard tasks={tasks} busyTaskId={busyTaskId} onMove={moveTask} onDelete={deleteTask} />
+      <KanbanBoard
+        tasks={tasks}
+        busyTaskId={busyTaskId}
+        onCreate={createTask}
+        onMove={moveTask}
+        onDelete={deleteTask}
+      />
     </>
   )
 }
