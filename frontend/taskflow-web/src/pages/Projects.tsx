@@ -20,9 +20,11 @@ export function Projects() {
       <ProjectForm submitLabel="Criar projeto" onSubmit={create} />
 
       <section className="section">
-        {loading && !data && <Loading />}
+        {loading && !data && <Loading layout="grid" />}
         {error && <ErrorMessage message={error} onRetry={reload} />}
-        {data && data.length === 0 && <p className="empty">Nenhum projeto cadastrado.</p>}
+        {data && data.length === 0 && (
+          <p className="empty">Nenhum projeto ainda. Dê um nome no formulário acima para criar o primeiro.</p>
+        )}
         {data && data.length > 0 && (
           <div className="grid">
             {data.map((p) => (

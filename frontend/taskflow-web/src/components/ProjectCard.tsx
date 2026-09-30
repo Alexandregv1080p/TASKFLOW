@@ -13,7 +13,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
         <span>{project.doneCount} concluídas</span>
       </div>
       <div className="progress" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
-        <div className="progress__bar" style={{ width: `${progress}%` }} />
+        <div className="progress__bar" style={{ transform: `scaleX(${progress / 100})` }} />
       </div>
     </Link>
   )

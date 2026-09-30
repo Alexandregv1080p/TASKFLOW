@@ -1,3 +1,4 @@
+import { ArrowLeftIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ErrorMessage, Loading } from '../components/Feedback'
@@ -19,7 +20,7 @@ export function ProjectDetails() {
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string>()
 
-  if (loading && !data) return <Loading />
+  if (loading && !data) return <Loading layout="board" />
   if (error) return <ErrorMessage message={error} onRetry={reload} />
   if (!data) return null
 
@@ -74,7 +75,8 @@ export function ProjectDetails() {
   return (
     <>
       <Link to="/projects" className="back-link">
-        ← Projetos
+        <ArrowLeftIcon size={14} weight="bold" aria-hidden="true" />
+        Projetos
       </Link>
 
       {editing ? (

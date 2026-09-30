@@ -1,27 +1,37 @@
+/*
+  Tokens do TaskFlow.
+  Paleta: neutros zinc + um único acento cobalto. Cores de status/prioridade só em badges, barras e bordas.
+  Raios (regra única): cards 12px, controles 8px, badges em pílula.
+  Movimento: só transform/opacity, easing forte e durações < 250ms.
+*/
 :root {
-  --bg: #f6f7fb;
-  --surface: #ffffff;
-  --surface-2: #f0f2f7;
-  --border: #e3e6ee;
-  --text: #1c2033;
-  --muted: #667085;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-soft: #eef0ff;
-  --danger: #dc2626;
-  --danger-soft: #fdecec;
+  --bg: #f4f4f5;
+  --surface: #fcfcfd;
+  --surface-2: #ececef;
+  --border: #e0e0e5;
+  --text: #18181b;
+  --muted: #5f5f6b;
+  --accent: #2452d9;
+  --accent-hover: #1c43b8;
+  --accent-soft: #e6ecfc;
+  --on-accent: #fafafa;
+  --danger: #c62828;
+  --danger-soft: #fbeaea;
 
-  --todo: #64748b;
-  --inprogress: #d97706;
-  --done: #16a34a;
-  --low: #0891b2;
-  --medium: #d97706;
-  --high: #dc2626;
+  --todo: #71717a;
+  --inprogress: #c26a00;
+  --done: #15803d;
+  --low: #0e7490;
+  --medium: #b45309;
+  --high: #c62828;
 
-  --radius: 10px;
-  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --shadow: 0 1px 2px rgb(24 24 27 / 5%), 0 2px 6px rgb(24 24 27 / 5%);
 
-  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
@@ -30,17 +40,26 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f1117;
-    --surface: #181b24;
-    --surface-2: #1f2330;
-    --border: #2a2f3d;
-    --text: #e6e8ef;
-    --muted: #98a0b3;
-    --primary: #818cf8;
-    --primary-hover: #a5b4fc;
-    --primary-soft: #23264a;
-    --danger: #f87171;
-    --danger-soft: #3a1d22;
+    --bg: #111114;
+    --surface: #19191d;
+    --surface-2: #222228;
+    --border: #2d2d35;
+    --text: #ededf0;
+    --muted: #a1a1ac;
+    --accent: #6f93ff;
+    --accent-hover: #93afff;
+    --accent-soft: #1e2644;
+    --on-accent: #0d1330;
+    --danger: #f28b82;
+    --danger-soft: #3a1f21;
+
+    --todo: #8e8e99;
+    --inprogress: #f0a13c;
+    --done: #4ade80;
+    --low: #38bdd8;
+    --medium: #f0a13c;
+    --high: #f28b82;
+
     --shadow: none;
   }
 }
@@ -64,20 +83,24 @@ p {
 
 h1 {
   font-size: 1.6rem;
+  letter-spacing: -0.02em;
   margin-bottom: 1.25rem;
 }
 
 h2 {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
 }
 
 a {
-  color: var(--primary);
+  color: var(--accent);
   text-decoration: none;
 }
 
-a:hover {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    text-decoration: underline;
+  }
 }
 
 .muted {
@@ -95,12 +118,12 @@ a:hover {
 
 .layout {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 208px 1fr;
   grid-template-rows: auto 1fr;
   grid-template-areas:
     'topbar topbar'
     'sidebar content';
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .topbar {
@@ -108,7 +131,8 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1.5rem;
+  height: 60px;
+  padding: 0 1.5rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -116,9 +140,10 @@ a:hover {
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
@@ -129,15 +154,17 @@ a:hover {
 .brand__logo {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--primary);
-  color: #fff;
-  font-size: 0.9rem;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-control);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .topbar__user {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -153,20 +180,30 @@ a:hover {
 }
 
 .sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   padding: 0.5rem 0.75rem;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   color: var(--muted);
   font-weight: 500;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 .sidebar__link:hover {
-  background: var(--surface-2);
   text-decoration: none;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .sidebar__link:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+}
+
 .sidebar__link.active {
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .content {
@@ -183,6 +220,10 @@ a:hover {
       'topbar'
       'sidebar'
       'content';
+  }
+
+  .topbar {
+    padding: 0 1rem;
   }
 
   .sidebar {
@@ -202,25 +243,37 @@ a:hover {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow);
   padding: 1rem;
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   font: inherit;
   font-size: 0.9rem;
   font-weight: 500;
   padding: 0.5rem 0.9rem;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
   white-space: nowrap;
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+/* Feedback de pressão: o botão "responde" ao clique. */
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -229,17 +282,13 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 a:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .btn--primary {
-  background: var(--primary);
-  color: #fff;
-}
-
-.btn--primary:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .btn--ghost {
@@ -248,45 +297,55 @@ a:focus-visible {
   color: var(--text);
 }
 
-.btn--ghost:hover:not(:disabled) {
-  background: var(--surface-2);
-}
-
 .btn--danger-ghost {
   background: transparent;
-  border-color: transparent;
   color: var(--danger);
 }
 
-.btn--danger-ghost:hover:not(:disabled) {
-  background: var(--danger-soft);
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+
+  .btn--ghost:hover:not(:disabled) {
+    background: var(--surface-2);
+  }
+
+  .btn--danger-ghost:hover:not(:disabled) {
+    background: var(--danger-soft);
+  }
 }
 
 .btn--sm {
   font-size: 0.8rem;
-  padding: 0.25rem 0.55rem;
+  padding: 0.3rem 0.6rem;
+}
+
+.btn--icon {
+  padding: 0.35rem;
 }
 
 .badge {
   display: inline-block;
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.1rem 0.5rem;
+  padding: 0.1rem 0.55rem;
   border-radius: 999px;
-  color: #fff;
   white-space: nowrap;
+  border: 1px solid currentColor;
+  background: transparent;
 }
 
 .badge--low {
-  background: var(--low);
+  color: var(--low);
 }
 
 .badge--medium {
-  background: var(--medium);
+  color: var(--medium);
 }
 
 .badge--high {
-  background: var(--high);
+  color: var(--high);
 }
 
 .progress {
@@ -297,10 +356,12 @@ a:focus-visible {
   flex: 1;
 }
 
+/* Animado por transform (scaleX), não por width: não recalcula layout. */
 .progress__bar {
   height: 100%;
   background: var(--done);
-  transition: width 0.3s;
+  transform-origin: left;
+  transition: transform 400ms var(--ease-out);
 }
 
 .progress__bar--low {
@@ -333,7 +394,7 @@ a:focus-visible {
 .form label {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.35rem;
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--muted);
@@ -349,10 +410,16 @@ select {
   font: inherit;
   font-size: 0.95rem;
   color: var(--text);
-  background: var(--surface);
+  background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 0.5rem 0.65rem;
+  transition: border-color 150ms ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
 }
 
 textarea {
@@ -377,40 +444,41 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem;
-  color: var(--muted);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-card);
 }
 
 .feedback--error {
-  justify-content: space-between;
   color: var(--danger);
   background: var(--danger-soft);
-  border-radius: var(--radius);
   margin-bottom: 1rem;
 }
 
-.spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+.feedback__message {
+  flex: 1;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.skeleton {
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation-duration: 2s;
-  }
+.skeleton--stat {
+  height: 88px;
+}
 
-  .progress__bar {
-    transition: none;
+.skeleton--card {
+  height: 132px;
+}
+
+.skeleton--column {
+  height: 260px;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
   }
 }
 
@@ -430,7 +498,8 @@ textarea {
 .stat {
   display: flex;
   flex-direction: column;
-  border-top: 3px solid var(--primary);
+  gap: 0.15rem;
+  border-top: 3px solid var(--accent);
 }
 
 .stat--todo {
@@ -446,8 +515,10 @@ textarea {
 }
 
 .stat__value {
-  font-size: 1.8rem;
+  font-size: 1.9rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat__label {
@@ -472,7 +543,7 @@ textarea {
 .priority-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .priority-row {
@@ -485,6 +556,7 @@ textarea {
 .priority-row__value {
   text-align: right;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .grid {
@@ -498,12 +570,23 @@ textarea {
   flex-direction: column;
   gap: 0.5rem;
   color: var(--text);
-  transition: border-color 0.15s;
+  transition:
+    border-color 150ms ease,
+    transform 160ms var(--ease-out);
 }
 
 .project-card:hover {
   text-decoration: none;
-  border-color: var(--primary);
+}
+
+.project-card:active {
+  transform: scale(0.99);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .project-card:hover {
+    border-color: var(--accent);
+  }
 }
 
 .project-card__stats {
@@ -511,13 +594,16 @@ textarea {
   justify-content: space-between;
   font-size: 0.85rem;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
   margin-top: auto;
 }
 
 /* Detalhes do projeto */
 
 .back-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   margin-bottom: 1rem;
   font-size: 0.9rem;
 }
@@ -560,9 +646,9 @@ textarea {
   gap: 0.75rem;
   padding: 0.75rem;
   background: var(--surface-2);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   border-top: 3px solid var(--todo);
-  min-height: 120px;
+  min-height: 140px;
 }
 
 .kanban__column--inprogress {
@@ -580,9 +666,8 @@ textarea {
 }
 
 .kanban__header h3 {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.85rem;
+  font-weight: 600;
   color: var(--muted);
 }
 
@@ -592,21 +677,43 @@ textarea {
   color: var(--muted);
   background: var(--surface);
   border-radius: 999px;
-  padding: 0 0.5rem;
+  padding: 0 0.55rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .kanban__empty {
   color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
-  padding: 1rem 0;
+  padding: 1.25rem 0;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-control);
 }
 
+/*
+  Entrada do card: toda vez que uma tarefa é criada ou muda de coluna, ela é montada de novo
+  e aparece com um leve deslocamento. Deixa claro onde a tarefa foi parar.
+*/
 .task-card {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem;
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out),
+    filter 200ms ease;
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Salvando: o card fica levemente apagado até a API responder. */
+.task-card[aria-busy='true'] {
+  opacity: 0.6;
+  filter: blur(0.5px);
 }
 
 .task-card__header {
@@ -618,6 +725,7 @@ textarea {
 
 .task-card__header h4 {
   font-size: 0.95rem;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -626,7 +734,11 @@ textarea {
 }
 
 .task-card__due {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .task-card__due--late {
@@ -636,10 +748,33 @@ textarea {
 
 .task-card__actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 0.35rem;
 }
 
 .task-card__delete {
   margin-left: auto;
+}
+
+/* Movimento reduzido: mantém mudanças de cor/opacidade, remove deslocamentos. */
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled),
+  .project-card:active {
+    transform: none;
+  }
+
+  .task-card {
+    @starting-style {
+      transform: none;
+    }
+  }
+
+  .progress__bar {
+    transition: none;
+  }
+
+  .skeleton {
+    animation: none;
+  }
 }

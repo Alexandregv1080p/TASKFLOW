@@ -7,7 +7,7 @@ import { api } from '../services/api'
 export function Dashboard() {
   const { data, loading, error, reload } = useAsync(api.getDashboard, [])
 
-  if (loading && !data) return <Loading />
+  if (loading && !data) return <Loading layout="dashboard" />
   if (error) return <ErrorMessage message={error} onRetry={reload} />
   if (!data) return null
 
@@ -47,7 +47,7 @@ export function Dashboard() {
               <div className="progress">
                 <div
                   className={`progress__bar progress__bar--${p.tone}`}
-                  style={{ width: `${data.totalTasks ? (p.value / data.totalTasks) * 100 : 0}%` }}
+                  style={{ transform: `scaleX(${data.totalTasks ? p.value / data.totalTasks : 0})` }}
                 />
               </div>
               <span className="priority-row__value">{p.value}</span>

@@ -1898,7 +1898,10 @@ Decisões da API:
 
 Decisões do frontend:
 
-* Dependências de runtime: apenas `react`, `react-dom` e `react-router-dom` (rotas `/`, `/projects`, `/projects/:id`). Estilo em CSS puro com variáveis, tema claro/escuro automático e layout responsivo.
+* Dependências de runtime: `react`, `react-dom`, `react-router-dom` (rotas `/`, `/projects`, `/projects/:id`) e `@phosphor-icons/react` (uma única família de ícones). Estilo em CSS puro com variáveis, tema claro/escuro automático e layout responsivo.
+* Linguagem visual: neutros zinc + um único acento cobalto; cores de status/prioridade só em badges, barras e bordas. Raios: cards 12px, controles 8px, badges em pílula. Contraste WCAG AA nos dois temas.
+* Movimento com propósito: botões com `scale(0.97)` ao pressionar; card de tarefa entra com opacity + translateY(4px) em 200ms (`@starting-style`) ao ser criado ou mudar de coluna; barras de progresso animam `transform: scaleX` (não `width`); hover só em dispositivos com mouse; tudo respeita `prefers-reduced-motion`.
+* Loading com skeletons no formato do conteúdo final (dashboard, grade, kanban).
 * Em dev o Vite (`http://localhost:5173`) faz proxy de `/api` e `/health` para a API — mesma origem, sem necessidade de CORS. Em produção o papel será do servidor web do container (Fase 9).
 * `useAsync` (hook) centraliza loading/erro/reload; mutações atualizam o estado local sem recarregar a página.
 * Os botões do Kanban só movem uma coluna por vez, espelhando a regra do domínio. Prazo vencido aparece como "Atrasada".
