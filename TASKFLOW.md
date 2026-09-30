@@ -669,6 +669,30 @@ DELETE /api/projects/{id}
 
 ---
 
+### Dashboard
+
+```http
+GET /api/dashboard
+```
+
+Response:
+
+```json
+{
+  "totalProjects": 3,
+  "totalTasks": 12,
+  "tasksByStatus": { "todo": 5, "inProgress": 3, "done": 4 },
+  "tasksByPriority": { "low": 4, "medium": 5, "high": 3 },
+  "recentProjects": [
+    { "id": "...", "name": "Website", "description": null, "createdAt": "...", "taskCount": 12, "doneCount": 4 }
+  ]
+}
+```
+
+`GET /api/projects` retorna o mesmo formato de `recentProjects` (com `taskCount` e `doneCount`).
+
+---
+
 # 21. Tasks API
 
 ### Criar tarefa
@@ -1860,17 +1884,26 @@ Decisões da API:
 
 # Fase 6 — Frontend
 
-* [ ] Criar React + TypeScript
-* [ ] Configurar Vite
-* [ ] Criar layout
-* [ ] Criar Dashboard
-* [ ] Criar Projects
-* [ ] Criar Project Details
-* [ ] Criar Task Card
-* [ ] Criar Kanban
-* [ ] Integrar API
-* [ ] Implementar loading states
-* [ ] Implementar error states
+* [x] Criar React + TypeScript
+* [x] Configurar Vite
+* [x] Criar layout
+* [x] Criar Dashboard
+* [x] Criar Projects
+* [x] Criar Project Details
+* [x] Criar Task Card
+* [x] Criar Kanban
+* [x] Integrar API
+* [x] Implementar loading states
+* [x] Implementar error states
+
+Decisões do frontend:
+
+* Dependências de runtime: apenas `react`, `react-dom` e `react-router-dom` (rotas `/`, `/projects`, `/projects/:id`). Estilo em CSS puro com variáveis, tema claro/escuro automático e layout responsivo.
+* Em dev o Vite (`http://localhost:5173`) faz proxy de `/api` e `/health` para a API — mesma origem, sem necessidade de CORS. Em produção o papel será do servidor web do container (Fase 9).
+* `useAsync` (hook) centraliza loading/erro/reload; mutações atualizam o estado local sem recarregar a página.
+* Os botões do Kanban só movem uma coluna por vez, espelhando a regra do domínio. Prazo vencido aparece como "Atrasada".
+* Backend: a listagem de projetos passou a trazer `taskCount`/`doneCount` e foi criado `GET /api/dashboard` (contagens calculadas no banco), evitando uma requisição por projeto no frontend.
+* Fora do MVP da tela, por ora: edição de título/prioridade da tarefa e atribuição de responsável (a API já suporta; entram quando houver usuários reais, Fase 7).
 
 ---
 
@@ -2278,12 +2311,12 @@ Ao implementar este projeto:
 
 ## Frontend
 
-* [ ] React
-* [ ] TypeScript
-* [ ] Dashboard
-* [ ] Projects
-* [ ] Kanban
-* [ ] API integration
+* [x] React
+* [x] TypeScript
+* [x] Dashboard
+* [x] Projects
+* [x] Kanban
+* [x] API integration
 * [ ] Authentication
 
 ## Tests

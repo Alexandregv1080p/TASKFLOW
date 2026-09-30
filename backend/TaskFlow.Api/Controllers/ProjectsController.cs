@@ -9,7 +9,7 @@ namespace TaskFlow.Api.Controllers;
 public class ProjectsController(ProjectService projects, ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet]
-    public Task<IReadOnlyList<ProjectResponse>> List(CancellationToken ct) => projects.ListAsync(ct);
+    public Task<IReadOnlyList<ProjectSummaryResponse>> List(CancellationToken ct) => projects.ListAsync(ct: ct);
 
     [HttpGet("{id:guid}")]
     public Task<ProjectResponse> Get(Guid id, CancellationToken ct) => projects.GetAsync(id, ct);

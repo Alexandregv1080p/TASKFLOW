@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Common;
 using TaskFlow.Domain.Entities;
+using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Application.Projects;
 
@@ -20,11 +21,23 @@ public class ProjectService(ITaskFlowDbContext db)
     }
 
     // ponytail: lista todos os projetos; filtro por dono/membro entra com a autorização (Fase 7).
-    public async Task<IReadOnlyList<ProjectResponse>> ListAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<ProjectSummaryResponse>> ListAsync(int? limit = null, CancellationToken ct = default)
     {
-        var projects = await db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).ToListAsync(ct);
+        var query = db.Projects.AsNoTracking().OrderByDescending(p => p.CreatedAt).AsQueryable();
 
-        return projects.Select(ProjectResponse.From).ToList();
+        if (limit is { } take)
+            query = query.Take(take);
+
+        // Contagens calculadas no banco (subconsultas), sem carregar as tarefas.
+        return await query
+            .Select(p => new ProjectSummaryResponse(
+                p.Id,
+                p.Name,
+                p.Description,
+                p.CreatedAt,
+                db.Tasks.Count(t => t.ProjectId == p.Id),
+                db.Tasks.Count(t => t.ProjectId == p.Id && t.Status == TaskItemStatus.Done)))
+            .ToListAsync(ct);
     }
 
     public async Task<ProjectResponse> GetAsync(Guid id, CancellationToken ct = default) =>

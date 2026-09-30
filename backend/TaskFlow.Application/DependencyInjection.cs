@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using TaskFlow.Application.Dashboard;
 using TaskFlow.Application.Projects;
 using TaskFlow.Application.Tasks;
 
@@ -10,6 +11,7 @@ public static class DependencyInjection
     {
         services.AddScoped<ProjectService>();
         services.AddScoped<TaskService>();
+        services.AddScoped<DashboardService>();
 
         return services;
     }

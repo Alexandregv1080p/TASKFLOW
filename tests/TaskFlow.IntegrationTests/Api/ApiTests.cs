@@ -109,6 +109,32 @@ public class ApiTests(DatabaseFixture db)
     }
 
     [Fact]
+    public async Task Listagem_e_dashboard_trazem_contagens()
+    {
+        var projectId = (await CreateProjectAsync()).GetProperty("id").GetString();
+
+        async Task<string?> AddTaskAsync(string priority) =>
+            (await (await _client.PostAsJsonAsync($"/api/projects/{projectId}/tasks", new { title = "T", priority }))
+                .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+
+        await AddTaskAsync("Low");
+        var done = await AddTaskAsync("High");
+        await _client.PatchAsJsonAsync($"/api/tasks/{done}/status", new { status = "InProgress" });
+        await _client.PatchAsJsonAsync($"/api/tasks/{done}/status", new { status = "Done" });
+
+        var projects = await _client.GetFromJsonAsync<JsonElement>("/api/projects");
+        var summary = projects.EnumerateArray().Single(p => p.GetProperty("id").GetString() == projectId);
+        Assert.Equal(2, summary.GetProperty("taskCount").GetInt32());
+        Assert.Equal(1, summary.GetProperty("doneCount").GetInt32());
+
+        var dashboard = await _client.GetFromJsonAsync<JsonElement>("/api/dashboard");
+        Assert.True(dashboard.GetProperty("totalTasks").GetInt32() >= 2);
+        Assert.True(dashboard.GetProperty("tasksByStatus").GetProperty("done").GetInt32() >= 1);
+        Assert.True(dashboard.GetProperty("tasksByPriority").GetProperty("high").GetInt32() >= 1);
+        Assert.Equal(projectId, dashboard.GetProperty("recentProjects")[0].GetProperty("id").GetString());
+    }
+
+    [Fact]
     public async Task Tarefa_em_projeto_inexistente_retorna_404()
     {
         var response = await _client.PostAsJsonAsync($"/api/projects/{Guid.NewGuid()}/tasks",
