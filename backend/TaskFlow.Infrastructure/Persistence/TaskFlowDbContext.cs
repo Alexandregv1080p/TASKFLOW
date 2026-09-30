@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Application.Common;
 using TaskFlow.Domain.Entities;
 
 namespace TaskFlow.Infrastructure.Persistence;
 
-public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : DbContext(options)
+public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : DbContext(options), ITaskFlowDbContext
 {
     public DbSet<User> Users => Set<User>();
 

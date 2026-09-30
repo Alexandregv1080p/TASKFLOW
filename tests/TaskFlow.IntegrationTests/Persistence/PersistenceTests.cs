@@ -4,7 +4,8 @@ using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.IntegrationTests.Persistence;
 
-public class PersistenceTests(DatabaseFixture db) : IClassFixture<DatabaseFixture>
+[Collection(DatabaseCollection.Name)]
+public class PersistenceTests(DatabaseFixture db)
 {
     private async Task<(User user, Project project)> SeedProjectAsync()
     {

@@ -1,0 +1,17 @@
+using Microsoft.EntityFrameworkCore;
+using TaskFlow.Domain.Entities;
+
+namespace TaskFlow.Application.Common;
+
+// O DbContext já é repository + unit of work; a Application depende só desta interface,
+// sem conhecer o provedor (PostgreSQL) que a Infrastructure configura.
+public interface ITaskFlowDbContext
+{
+    DbSet<User> Users { get; }
+
+    DbSet<Project> Projects { get; }
+
+    DbSet<TaskItem> Tasks { get; }
+
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+}

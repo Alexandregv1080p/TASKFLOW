@@ -760,31 +760,29 @@ A Application Layer será responsável por orquestrar os casos de uso.
 
 Ela não deve conhecer detalhes específicos do PostgreSQL.
 
-Estrutura:
+Estrutura implementada:
 
 ```text
 TaskFlow.Application/
 │
+├── Common/
+│   ├── ITaskFlowDbContext.cs     # abstração de acesso a dados (ver seção 26)
+│   └── NotFoundException.cs
+│
 ├── Projects/
-│   ├── CreateProject/
-│   ├── GetProject/
-│   ├── GetProjects/
-│   ├── UpdateProject/
-│   └── DeleteProject/
+│   ├── ProjectDtos.cs            # CreateProjectRequest, UpdateProjectRequest, ProjectResponse
+│   └── ProjectService.cs         # Create, List, Get, Update, Delete
 │
 ├── Tasks/
-│   ├── CreateTask/
-│   ├── GetTask/
-│   ├── GetTasks/
-│   ├── UpdateTask/
-│   ├── DeleteTask/
-│   ├── ChangeTaskStatus/
-│   └── AssignTask/
+│   ├── TaskDtos.cs               # CreateTaskRequest, UpdateTaskRequest, ChangeTaskStatusRequest, AssignTaskRequest, TaskResponse
+│   └── TaskService.cs            # Create, ListByProject, Get, Update, Delete, ChangeStatus, Assign
 │
-└── Users/
-    ├── CreateUser/
-    └── GetUser/
+└── DependencyInjection.cs        # AddApplication()
 ```
+
+> Decisão: um service por feature, com **um método por caso de uso**, em vez de uma pasta/classe por caso de uso. Os casos de uso continuam explícitos e nomeados, com menos arquivos e sem boilerplate. Se um caso de uso crescer (várias dependências, regras próprias), ele pode ser extraído para uma classe dedicada.
+>
+> Os casos de uso de `Users` (cadastro e perfil) ficam para a Fase 7, junto com password hashing e JWT.
 
 ---
 
@@ -884,6 +882,10 @@ IProjectRepository
         │
 ProjectRepository
 ```
+
+> Decisão (Fase 4): **não** foram criados repositories. O `DbContext` do EF Core já implementa os padrões Repository (`DbSet<T>`) e Unit of Work (`SaveChangesAsync`). A Application depende apenas da interface `ITaskFlowDbContext`, que usa as abstrações do EF Core mas não conhece o PostgreSQL (Npgsql fica só na Infrastructure). A implementação concreta é o próprio `TaskFlowDbContext`.
+>
+> Um repository dedicado passa a se justificar se surgirem consultas complexas reaproveitadas em vários casos de uso, ou se for necessário trocar o EF Core.
 
 ---
 
@@ -1819,18 +1821,20 @@ Decisões de mapeamento:
 
 # Fase 4 — Application
 
-* [ ] Criar DTOs
-* [ ] Criar CreateProject
-* [ ] Criar GetProjects
-* [ ] Criar GetProject
-* [ ] Criar UpdateProject
-* [ ] Criar DeleteProject
-* [ ] Criar CreateTask
-* [ ] Criar GetTasks
-* [ ] Criar UpdateTask
-* [ ] Criar DeleteTask
-* [ ] Criar ChangeTaskStatus
-* [ ] Criar AssignTask
+* [x] Criar DTOs
+* [x] Criar CreateProject
+* [x] Criar GetProjects
+* [x] Criar GetProject
+* [x] Criar UpdateProject
+* [x] Criar DeleteProject
+* [x] Criar CreateTask
+* [x] Criar GetTasks (e GetTask)
+* [x] Criar UpdateTask
+* [x] Criar DeleteTask
+* [x] Criar ChangeTaskStatus
+* [x] Criar AssignTask (aceita `userId: null` para remover o responsável)
+
+Testes dos casos de uso em `tests/TaskFlow.IntegrationTests/Application`, contra o PostgreSQL real.
 
 ---
 
@@ -2254,7 +2258,7 @@ Ao implementar este projeto:
 
 * [x] Solution criada
 * [x] Domain
-* [ ] Application
+* [x] Application
 * [x] Infrastructure
 * [ ] API
 * [x] PostgreSQL

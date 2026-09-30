@@ -22,3 +22,10 @@ public class DatabaseFixture : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 }
+
+// Todas as classes que usam o banco compartilham um único fixture e rodam em sequência.
+[CollectionDefinition(Name)]
+public class DatabaseCollection : ICollectionFixture<DatabaseFixture>
+{
+    public const string Name = "Database";
+}

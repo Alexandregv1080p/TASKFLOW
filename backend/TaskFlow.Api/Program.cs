@@ -1,3 +1,4 @@
+using TaskFlow.Application;
 using TaskFlow.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Connection string 'Default' não configurada.");
 
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(connectionString);
 
 // Add services to the container.
