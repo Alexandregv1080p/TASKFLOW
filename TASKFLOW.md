@@ -1283,12 +1283,17 @@ volumes:
   taskflow_postgres_data:
 ```
 
-Posteriormente adicionar:
+Implementado (Fase 9): o `docker-compose.yml` sobe `postgres`, `api` e `web`.
 
 ```text
-taskflow-api
-taskflow-frontend
+web (nginx, :3000) ──/api──► api (ASP.NET Core, :8080) ──► postgres (:5432)
+      rede "frontend"              redes "frontend" + "backend"     rede "backend"
 ```
+
+* O frontend não alcança o banco: só a API está nas duas redes.
+* A API espera o PostgreSQL ficar saudável (`healthcheck` com `pg_isready`) antes de iniciar.
+* Portas no host configuráveis por `.env` (`WEB_PORT`, `API_PORT`, `POSTGRES_PORT`).
+* `docker compose up -d postgres` continua servindo para desenvolvimento local (dotnet run / npm run dev).
 
 ---
 
@@ -1919,7 +1924,7 @@ Decisões do frontend:
 * Loading com skeletons no formato do conteúdo final (dashboard, grade, kanban).
 * Layout: sidebar de altura total (marca, navegação, usuário), conteúdo até 1440px e cabeçalho de página padronizado. Fonte Geist auto-hospedada (`@fontsource-variable/geist`, sem CDN).
 * Criação de tarefa estilo Trello: "+ Nova tarefa" dentro da coluna A fazer, formulário compacto que continua aberto após adicionar (Esc fecha). Criação de projeto por botão no cabeçalho, que leva direto ao quadro do novo projeto.
-* Em dev o Vite (`http://localhost:5173`) faz proxy de `/api` e `/health` para a API — mesma origem, sem necessidade de CORS. Em produção o papel será do servidor web do container (Fase 9).
+* Em dev o Vite (`http://localhost:5173`) faz proxy de `/api` e `/health` para a API: mesma origem, sem necessidade de CORS. No Docker o mesmo papel é do nginx (Fase 9).
 * `useAsync` (hook) centraliza loading/erro/reload; mutações atualizam o estado local sem recarregar a página.
 * Os botões do Kanban só movem uma coluna por vez, espelhando a regra do domínio. Prazo vencido aparece como "Atrasada".
 * Backend: a listagem de projetos passou a trazer `taskCount`/`doneCount` e foi criado `GET /api/dashboard` (contagens calculadas no banco), evitando uma requisição por projeto no frontend.
@@ -1949,26 +1954,35 @@ Junto com a Fase 7:
 
 # Fase 8 — Tests
 
-* [ ] Criar Unit Tests
-* [ ] Criar Integration Tests
-* [ ] Testar Projects
-* [ ] Testar Tasks
-* [ ] Testar Authentication
-* [ ] Testar validações
-* [ ] Testar autorização
+* [x] Criar Unit Tests (`tests/TaskFlow.UnitTests`: regras de domínio)
+* [x] Criar Integration Tests (`tests/TaskFlow.IntegrationTests`: persistência, casos de uso e API via `WebApplicationFactory` contra PostgreSQL real)
+* [x] Testar Projects
+* [x] Testar Tasks
+* [x] Testar Authentication (cadastro, login, `/me`, token inválido, senha em hash, mesma resposta para senha errada e e-mail inexistente)
+* [x] Testar validações (400 no formato padrão, 409 em e-mail duplicado)
+* [x] Testar autorização (usuário não enxerga nem altera projeto/tarefa de outro)
+
+Os testes foram escritos junto com cada fase (seção 70, regra 9). Cada teste de API cria um usuário próprio, então os testes não dependem da ordem de execução nem dos dados uns dos outros.
 
 ---
 
 # Fase 9 — Docker
 
-* [ ] Dockerfile backend
-* [ ] Dockerfile frontend
-* [ ] PostgreSQL container
-* [ ] Docker Compose
-* [ ] Networks
-* [ ] Volumes
-* [ ] Environment variables
-* [ ] Testar aplicação completa via Docker
+* [x] Dockerfile backend (`docker/backend/Dockerfile`)
+* [x] Dockerfile frontend (`docker/frontend/Dockerfile` + `nginx.conf`)
+* [x] PostgreSQL container (com healthcheck)
+* [x] Docker Compose
+* [x] Networks (`frontend` e `backend` separadas)
+* [x] Volumes (`taskflow_postgres_data`)
+* [x] Environment variables (`.env`, modelo em `.env.example`)
+* [x] Testar aplicação completa via Docker
+
+Decisões:
+
+* **Backend:** build multi-stage (SDK só no build; runtime `aspnet:8.0`), restore em camada própria para cache, processo rodando como usuário não-root (`$APP_UID`).
+* **Frontend:** build com Node e entrega por `nginx-unprivileged` (não-root). O nginx serve o SPA (rotas desconhecidas → `index.html`), faz proxy de `/api` e `/health` para a API (mesma origem, sem CORS), aplica cache longo em `/assets` (nomes com hash) e headers de segurança (`nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`).
+* **Configuração:** a API roda como `Production` no container. `Database__ApplyMigrationsOnStartup` aplica as migrations ao subir e `Swagger__Enabled` liga o Swagger no ambiente de demonstração; fora disso, ambos só em Development.
+* **Segredos:** `JWT_SECRET` vem do `.env` (fora do Git) e não tem valor padrão: sem ele a API recusa iniciar. A senha do PostgreSQL também vem do `.env`.
 
 ---
 
@@ -2025,18 +2039,18 @@ Junto com a Fase 7:
 
 O MVP será considerado concluído quando:
 
-* [ ] PostgreSQL estiver funcionando via Docker
-* [ ] API ASP.NET Core estiver funcionando
-* [ ] Entity Framework estiver configurado
-* [ ] CRUD de projetos estiver funcionando
-* [ ] CRUD de tarefas estiver funcionando
-* [ ] Alteração de status estiver funcionando
-* [ ] React estiver funcionando
-* [ ] React estiver consumindo a API
-* [ ] Dashboard estiver funcionando
-* [ ] Kanban estiver funcionando
-* [ ] Testes básicos estiverem implementados
-* [ ] Docker Compose executar a aplicação
+* [x] PostgreSQL estiver funcionando via Docker
+* [x] API ASP.NET Core estiver funcionando
+* [x] Entity Framework estiver configurado
+* [x] CRUD de projetos estiver funcionando
+* [x] CRUD de tarefas estiver funcionando
+* [x] Alteração de status estiver funcionando
+* [x] React estiver funcionando
+* [x] React estiver consumindo a API
+* [x] Dashboard estiver funcionando
+* [x] Kanban estiver funcionando
+* [x] Testes básicos estiverem implementados
+* [x] Docker Compose executar a aplicação
 * [ ] GitLab CI executar build e testes
 
 ---
@@ -2066,6 +2080,8 @@ http://localhost:8080/health
 ```
 
 Os valores das portas podem ser ajustados conforme a implementação.
+
+Implementado: antes do primeiro `up`, `cp .env.example .env` e definir `JWT_SECRET`. Com as portas padrão, os endereços acima valem como estão; se 3000/8080 estiverem ocupadas, ajuste `WEB_PORT`/`API_PORT` no `.env`. O frontend também expõe `/health` (via proxy).
 
 ---
 
@@ -2333,8 +2349,8 @@ Ao implementar este projeto:
 * [x] Migrations
 * [x] Projects CRUD
 * [x] Tasks CRUD
-* [ ] Authentication
-* [ ] Authorization
+* [x] Authentication
+* [x] Authorization
 
 ## Frontend
 
@@ -2344,17 +2360,17 @@ Ao implementar este projeto:
 * [x] Projects
 * [x] Kanban
 * [x] API integration
-* [ ] Authentication
+* [x] Authentication
 
 ## Tests
 
-* [ ] Unit Tests
-* [ ] Integration Tests
+* [x] Unit Tests
+* [x] Integration Tests
 
 ## DevOps
 
-* [ ] Docker
-* [ ] Docker Compose
+* [x] Docker
+* [x] Docker Compose
 * [ ] GitLab
 * [ ] GitLab CI/CD
 * [ ] Container Registry

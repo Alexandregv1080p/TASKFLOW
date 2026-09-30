@@ -90,11 +90,17 @@ builder.Services.AddHealthChecks().AddDbContextCheck<TaskFlowDbContext>("postgre
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Em Development sempre; em outros ambientes só se ligado por configuração (ex.: Docker Compose).
+// ponytail: migrar na inicialização serve para uma instância; com várias réplicas, aplicar as migrations
+// como etapa do deploy (migration bundle no CI) para evitar corrida entre instâncias.
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
 {
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<TaskFlowDbContext>().Database.MigrateAsync();
+}
 
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
+{
     app.UseSwagger();
     app.UseSwaggerUI();
 }
