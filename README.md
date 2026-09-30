@@ -1,5 +1,7 @@
 # TaskFlow
 
+[![CI](https://github.com/Alexandregv1080p/TASKFLOW/actions/workflows/ci.yml/badge.svg)](https://github.com/Alexandregv1080p/TASKFLOW/actions/workflows/ci.yml)
+
 Plataforma web de gerenciamento de projetos e tarefas (ASP.NET Core 8 + PostgreSQL + React).
 
 A especificação completa está em [TASKFLOW.md](TASKFLOW.md).

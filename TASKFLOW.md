@@ -1428,6 +1428,8 @@ docs: update architecture documentation
 
 # 46. GitLab CI/CD
 
+> **Decisão (Fase 10): o CI/CD foi implementado com GitHub Actions**, porque o repositório está hospedado no GitHub. Os conceitos são os mesmos (pipeline, jobs, serviços, artefatos, registry); o arquivo é `.github/workflows/ci.yml` e o registry é o GitHub Container Registry (`ghcr.io`). O exemplo em GitLab abaixo foi mantido como referência.
+
 O pipeline deverá inicialmente possuir:
 
 ```text
@@ -1986,16 +1988,32 @@ Decisões:
 
 ---
 
-# Fase 10 — GitLab CI/CD
+# Fase 10 — CI/CD (GitHub Actions no lugar do GitLab, ver seção 46)
 
-* [ ] Criar GitLab repository
-* [ ] Configurar `.gitlab-ci.yml`
-* [ ] Build
-* [ ] Unit tests
-* [ ] Integration tests
-* [ ] Docker build
-* [ ] Container Registry
-* [ ] Deploy
+* [x] Repositório (GitHub)
+* [x] Configurar pipeline (`.github/workflows/ci.yml`)
+* [x] Build
+* [x] Unit tests
+* [x] Integration tests (PostgreSQL 16 como serviço do job)
+* [x] Docker build
+* [x] Container Registry (GitHub Container Registry, em push na `main`)
+* [ ] Deploy (depende da Fase 11: escolha da cloud)
+
+Pipeline (roda em push na `main`, em pull requests e manualmente):
+
+```text
+backend  (restore → build Release → 52 testes, resultados .trx como artefato) ─┐
+                                                                                ├─► docker
+frontend (npm ci → lint → tsc + vite build) ───────────────────────────────────┘
+docker:  compose build → sobe a stack → smoke test pelo nginx
+         (/health, rota do SPA, 401 sem token, cadastro + acesso com token)
+         → em push na main: publica taskflow-api e taskflow-web em ghcr.io
+           com as tags latest e SHA curto do commit (seção 48)
+```
+
+* Execuções antigas do mesmo branch são canceladas quando chega um push novo.
+* O workflow é validado com `actionlint`.
+* O token de publicação é o `GITHUB_TOKEN` do próprio job (permissão `packages: write` só no job docker); não há segredo manual a configurar.
 
 ---
 
@@ -2051,7 +2069,7 @@ O MVP será considerado concluído quando:
 * [x] Kanban estiver funcionando
 * [x] Testes básicos estiverem implementados
 * [x] Docker Compose executar a aplicação
-* [ ] GitLab CI executar build e testes
+* [x] CI executar build e testes (GitHub Actions, ver seção 46)
 
 ---
 
@@ -2371,9 +2389,9 @@ Ao implementar este projeto:
 
 * [x] Docker
 * [x] Docker Compose
-* [ ] GitLab
-* [ ] GitLab CI/CD
-* [ ] Container Registry
+* [x] GitHub (no lugar do GitLab)
+* [x] GitHub Actions CI (no lugar do GitLab CI/CD)
+* [x] Container Registry (ghcr.io)
 * [ ] Deploy
 
 ## Cloud
