@@ -961,10 +961,10 @@ Exemplo:
 }
 ```
 
+Implementado: o health check já verifica a conexão com o PostgreSQL (retorna `Unhealthy` com HTTP 503 se o banco estiver fora).
+
 Posteriormente o health check poderá verificar:
 
-* API
-* PostgreSQL
 * MongoDB
 * Serviços externos
 
@@ -1840,14 +1840,21 @@ Testes dos casos de uso em `tests/TaskFlow.IntegrationTests/Application`, contra
 
 # Fase 5 — API
 
-* [ ] Criar ProjectsController
-* [ ] Criar TasksController
-* [ ] Configurar Dependency Injection
-* [ ] Configurar Swagger
-* [ ] Configurar middleware
-* [ ] Configurar validation
-* [ ] Criar health check
-* [ ] Testar endpoints
+* [x] Criar ProjectsController
+* [x] Criar TasksController
+* [x] Configurar Dependency Injection
+* [x] Configurar Swagger
+* [x] Configurar middleware (`GlobalExceptionHandler`: `DomainException` → 400, `NotFoundException` → 404, demais → 500 sem detalhes internos)
+* [x] Configurar validation
+* [x] Criar health check (`/health`, inclui conexão com o PostgreSQL)
+* [x] Testar endpoints (`tests/TaskFlow.IntegrationTests/Api`, via `WebApplicationFactory`)
+
+Decisões da API:
+
+* Enums trafegam como texto no JSON (`"High"`, `"InProgress"`); valor desconhecido → 400.
+* Validação em duas camadas, sem duplicar regras: o model binding rejeita JSON malformado, tipos errados e campos obrigatórios ausentes; o domínio valida conteúdo (vazio, tamanho, transições). Ambos respondem no formato da seção 27.
+* **Usuário demo (temporário):** em Development, a API aplica as migrations e cria `demo@taskflow.local` na inicialização; ele é o "usuário atual" (`ICurrentUser`) e dono dos projetos criados. Não consegue fazer login. Será substituído pelo usuário do JWT na Fase 7.
+* Em desenvolvimento a API roda em `http://localhost:5033` (Swagger em `/swagger`).
 
 ---
 
@@ -2260,12 +2267,12 @@ Ao implementar este projeto:
 * [x] Domain
 * [x] Application
 * [x] Infrastructure
-* [ ] API
+* [x] API
 * [x] PostgreSQL
 * [x] EF Core
 * [x] Migrations
-* [ ] Projects CRUD
-* [ ] Tasks CRUD
+* [x] Projects CRUD
+* [x] Tasks CRUD
 * [ ] Authentication
 * [ ] Authorization
 
@@ -2302,7 +2309,7 @@ Ao implementar este projeto:
 
 ## Observability
 
-* [ ] Health Checks
+* [x] Health Checks
 * [ ] Structured Logs
 * [ ] Prometheus
 * [ ] Grafana

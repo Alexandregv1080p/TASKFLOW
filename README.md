@@ -25,4 +25,16 @@ dotnet build backend/TaskFlow.sln
 dotnet run --project backend/TaskFlow.Api
 ```
 
-PostgreSQL: `localhost:5436` (db/usuário/senha: `taskflow`, apenas para desenvolvimento).
+Em Development a API aplica as migrations e cria um usuário demo automaticamente.
+
+* Swagger: http://localhost:5033/swagger
+* Health: http://localhost:5033/health
+* PostgreSQL: `localhost:5436` (db/usuário/senha: `taskflow`, apenas para desenvolvimento).
+
+## Testes
+
+```bash
+dotnet test backend/TaskFlow.sln
+```
+
+Os testes de integração usam o banco `taskflow_tests` no mesmo PostgreSQL (recriado a cada execução).
