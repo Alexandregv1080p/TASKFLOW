@@ -1799,13 +1799,21 @@ Evitar:
 
 # Fase 3 — Infrastructure
 
-* [ ] Instalar EF Core
-* [ ] Criar DbContext
-* [ ] Configurar entidades
-* [ ] Configurar PostgreSQL
-* [ ] Criar migrations
-* [ ] Criar banco
-* [ ] Testar persistência
+* [x] Instalar EF Core
+* [x] Criar DbContext
+* [x] Configurar entidades
+* [x] Configurar PostgreSQL
+* [x] Criar migrations
+* [x] Criar banco
+* [x] Testar persistência (`tests/TaskFlow.IntegrationTests`, banco separado `taskflow_tests`)
+
+Decisões de mapeamento:
+
+* Enums gravados como texto (`HasConversion<string>()`): legíveis no banco e imunes à reordenação do enum.
+* `DueDate` como coluna `date` (prazo não tem hora nem fuso).
+* Exclusões: Project → Tasks em cascata; User com projetos não pode ser excluído (`Restrict`); responsável excluído deixa a tarefa sem responsável (`SetNull`).
+* `Email` com índice único.
+* Connection string apenas em `appsettings.Development.json`; fora disso via `ConnectionStrings__Default`. Testes de integração aceitam `TASKFLOW_TEST_CONNECTION`.
 
 ---
 
@@ -2247,11 +2255,11 @@ Ao implementar este projeto:
 * [x] Solution criada
 * [x] Domain
 * [ ] Application
-* [ ] Infrastructure
+* [x] Infrastructure
 * [ ] API
-* [ ] PostgreSQL
-* [ ] EF Core
-* [ ] Migrations
+* [x] PostgreSQL
+* [x] EF Core
+* [x] Migrations
 * [ ] Projects CRUD
 * [ ] Tasks CRUD
 * [ ] Authentication

@@ -1,4 +1,12 @@
+using TaskFlow.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Em produção vem da variável de ambiente ConnectionStrings__Default.
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException("Connection string 'Default' não configurada.");
+
+builder.Services.AddInfrastructure(connectionString);
 
 // Add services to the container.
 
