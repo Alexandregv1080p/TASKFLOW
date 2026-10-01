@@ -10,6 +10,7 @@ public record ProjectSummaryResponse(
     Guid Id,
     string Name,
     string? Description,
+    Guid OwnerId,
     DateTime CreatedAt,
     int TaskCount,
     int DoneCount);

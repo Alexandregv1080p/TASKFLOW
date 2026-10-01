@@ -11,6 +11,8 @@ public interface ITaskFlowDbContext
 
     DbSet<Project> Projects { get; }
 
+    DbSet<ProjectMember> ProjectMembers { get; }
+
     DbSet<TaskItem> Tasks { get; }
 
     DbSet<TaskEvent> TaskEvents { get; }

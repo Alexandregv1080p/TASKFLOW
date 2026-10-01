@@ -1,9 +1,12 @@
-import { ArrowLeftIcon, PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react'
+import { ArrowLeftIcon, PencilSimpleIcon, TrashIcon, UserPlusIcon } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../auth/context'
+import { Avatar } from '../components/Avatar'
 import { ErrorMessage, Loading } from '../components/Feedback'
 import { KanbanBoard } from '../components/KanbanBoard'
 import { ProjectForm } from '../components/ProjectForm'
+import { ProjectMembersDialog } from '../components/ProjectMembersDialog'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../services/api'
 import type { Project, ProjectInput, Task, TaskInput, TaskStatus, UserSummary } from '../types'
@@ -23,10 +26,12 @@ export function ProjectDetails() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const { data, loading, error, reload, setData } = useAsync(
-    () => Promise.all([api.getProject(id), api.listTasks(id), api.listUsers()]),
+    () => Promise.all([api.getProject(id), api.listTasks(id), api.listMembers(id)]),
     [id],
   )
+  const { user } = useAuth()
   const [editing, setEditing] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string>()
   const usersById = useMemo(() => new Map((data?.[2] ?? []).map((u) => [u.id, u])), [data])
@@ -36,6 +41,8 @@ export function ProjectDetails() {
   if (!data) return null
 
   const [project, tasks, users] = data
+  // Só o dono edita/exclui o projeto e gerencia pessoas; a API aplica a mesma regra (403).
+  const isOwner = project.ownerId === user?.id
   const keyPrefix = projectKey(project.name)
   const done = tasks.filter((t) => t.status === 'Done').length
 
@@ -111,18 +118,40 @@ export function ProjectDetails() {
           </div>
 
           <div className="page-header__actions">
-            <button className="btn btn--ghost" onClick={() => setEditing(true)}>
-              <PencilSimpleIcon size={16} aria-hidden="true" />
-              Editar
-            </button>
             <button
-              className="icon-btn icon-btn--danger icon-btn--lg"
-              onClick={deleteProject}
-              aria-label="Excluir projeto"
-              title="Excluir projeto"
+              className="avatar-stack"
+              onClick={() => setMembersOpen(true)}
+              aria-label={`Pessoas do projeto (${users.length})`}
+              title="Pessoas do projeto"
             >
-              <TrashIcon size={18} />
+              {users.slice(0, 4).map((u) => (
+                <Avatar key={u.id} name={u.name} />
+              ))}
+              {users.length > 4 && <span className="avatar avatar--more">+{users.length - 4}</span>}
             </button>
+
+            {isOwner ? (
+              <>
+                <button className="btn btn--ghost" onClick={() => setMembersOpen(true)}>
+                  <UserPlusIcon size={16} aria-hidden="true" />
+                  Compartilhar
+                </button>
+                <button className="btn btn--ghost" onClick={() => setEditing(true)}>
+                  <PencilSimpleIcon size={16} aria-hidden="true" />
+                  Editar
+                </button>
+                <button
+                  className="icon-btn icon-btn--danger icon-btn--lg"
+                  onClick={deleteProject}
+                  aria-label="Excluir projeto"
+                  title="Excluir projeto"
+                >
+                  <TrashIcon size={18} />
+                </button>
+              </>
+            ) : (
+              <span className="badge badge--shared">Compartilhado com você</span>
+            )}
           </div>
         </header>
       )}
@@ -147,6 +176,17 @@ export function ProjectDetails() {
         onMove={moveTask}
         onDelete={deleteTask}
       />
+
+      {membersOpen && user && (
+        <ProjectMembersDialog
+          project={project}
+          members={users}
+          currentUserId={user.id}
+          onClose={() => setMembersOpen(false)}
+          onChanged={reload}
+          onLeft={() => navigate('/projects')}
+        />
+      )}
 
       <Outlet context={outletContext} />
     </>

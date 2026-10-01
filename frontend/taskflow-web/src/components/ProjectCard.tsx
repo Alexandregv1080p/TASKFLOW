@@ -1,12 +1,24 @@
+import { UsersIcon } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/context'
 import type { ProjectSummary } from '../types'
 
 export function ProjectCard({ project }: { project: ProjectSummary }) {
+  const { user } = useAuth()
   const progress = project.taskCount === 0 ? 0 : project.doneCount / project.taskCount
+  const shared = project.ownerId !== user?.id
 
   return (
     <Link to={`/projects/${project.id}`} className="card project-card">
-      <h3>{project.name}</h3>
+      <div className="project-card__header">
+        <h3>{project.name}</h3>
+        {shared && (
+          <span className="project-card__shared" title="Compartilhado com você">
+            <UsersIcon size={15} aria-hidden="true" />
+            <span className="sr-only">Compartilhado com você</span>
+          </span>
+        )}
+      </div>
       <p className="project-card__description clamp">{project.description ?? 'Sem descrição'}</p>
 
       <div className="project-card__footer">

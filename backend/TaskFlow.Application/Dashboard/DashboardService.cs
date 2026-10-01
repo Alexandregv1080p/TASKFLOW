@@ -22,8 +22,9 @@ public class DashboardService(ITaskFlowDbContext db, ProjectService projects, IC
 
     public async Task<DashboardResponse> GetAsync(CancellationToken ct = default)
     {
-        var userId = currentUser.UserId;
-        var tasks = db.Tasks.Where(t => db.Projects.Any(p => p.Id == t.ProjectId && p.OwnerId == userId));
+        // Projetos próprios e compartilhados comigo.
+        var accessible = db.AccessibleProjects(currentUser.UserId);
+        var tasks = db.Tasks.Where(t => accessible.Any(p => p.Id == t.ProjectId));
 
         var byStatus = await tasks
             .GroupBy(t => t.Status)
@@ -36,7 +37,7 @@ public class DashboardService(ITaskFlowDbContext db, ProjectService projects, IC
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
         return new DashboardResponse(
-            await db.Projects.CountAsync(p => p.OwnerId == userId, ct),
+            await accessible.CountAsync(ct),
             byStatus.Values.Sum(),
             new StatusCounts(
                 byStatus.GetValueOrDefault(TaskItemStatus.Todo),

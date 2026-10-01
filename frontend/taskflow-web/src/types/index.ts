@@ -15,6 +15,11 @@ export interface UserSummary {
   name: string
 }
 
+// Pessoa de um projeto: o dono ou um membro com quem ele foi compartilhado.
+export interface ProjectMember extends UserSummary {
+  isOwner: boolean
+}
+
 export interface AuthResponse {
   accessToken: string
   expiresAt: string
@@ -33,6 +38,7 @@ export interface ProjectSummary {
   id: string
   name: string
   description: string | null
+  ownerId: string
   createdAt: string
   taskCount: number
   doneCount: number

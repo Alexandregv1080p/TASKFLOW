@@ -10,6 +10,8 @@ public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : Db
 
     public DbSet<Project> Projects => Set<Project>();
 
+    public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
 
     public DbSet<TaskEvent> TaskEvents => Set<TaskEvent>();

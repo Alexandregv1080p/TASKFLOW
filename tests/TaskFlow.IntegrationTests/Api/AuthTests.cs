@@ -16,7 +16,7 @@ public class AuthTests(DatabaseFixture db)
     [Theory]
     [InlineData("/api/projects")]
     [InlineData("/api/dashboard")]
-    [InlineData("/api/users")]
+    [InlineData("/api/projects/3f2c1a9e-0b7d-4e55-9c1a-2d6f8b4e7a10/members")]
     [InlineData("/api/auth/me")]
     public async Task Endpoints_protegidos_exigem_token(string url)
     {
@@ -93,6 +93,38 @@ public class AuthTests(DatabaseFixture db)
         var user = context.Users.Single(u => u.Email == email);
 
         Assert.DoesNotContain("senha-segura-123", user.PasswordHash);
+    }
+
+    [Fact]
+    public async Task Compartilhamento_pela_api()
+    {
+        var owner = await db.CreateAuthenticatedClientAsync("Dona");
+        var memberEmail = NewEmail();
+        var registered = await _anonymous.PostAsJsonAsync("/api/auth/register",
+            new { name = "Membro", email = memberEmail, password = "senha-segura-123" });
+        var auth = await registered.Content.ReadFromJsonAsync<JsonElement>();
+        var memberId = auth.GetProperty("user").GetProperty("id").GetString();
+        var member = db.Api.CreateClient();
+        member.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.GetProperty("accessToken").GetString());
+
+        var project = await (await owner.PostAsJsonAsync("/api/projects", new { name = "Time" })).Content.ReadFromJsonAsync<JsonElement>();
+        var id = project.GetProperty("id").GetString();
+
+        var added = await owner.PostAsJsonAsync($"/api/projects/{id}/members", new { email = memberEmail });
+        Assert.Equal(HttpStatusCode.Created, added.StatusCode);
+        await ApiTests.AssertErrorAsync(await owner.PostAsJsonAsync($"/api/projects/{id}/members", new { email = memberEmail }), HttpStatusCode.Conflict);
+
+        // Membro acessa, mas não administra (403).
+        Assert.Equal(HttpStatusCode.OK, (await member.GetAsync($"/api/projects/{id}")).StatusCode);
+        await ApiTests.AssertErrorAsync(await member.DeleteAsync($"/api/projects/{id}"), HttpStatusCode.Forbidden);
+
+        // A lista de pessoas não expõe e-mails.
+        var people = await member.GetStringAsync($"/api/projects/{id}/members");
+        Assert.Contains("Membro", people);
+        Assert.DoesNotContain(memberEmail, people);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await owner.DeleteAsync($"/api/projects/{id}/members/{memberId}")).StatusCode);
+        await ApiTests.AssertErrorAsync(await member.GetAsync($"/api/projects/{id}"), HttpStatusCode.NotFound);
     }
 
     [Fact]

@@ -3,6 +3,7 @@ import type {
   Dashboard,
   Project,
   ProjectInput,
+  ProjectMember,
   ProjectSummary,
   Task,
   TaskComment,
@@ -10,7 +11,6 @@ import type {
   TaskInput,
   TaskStatus,
   User,
-  UserSummary,
 } from '../types'
 
 // Único ponto de comunicação com a API: base URL, token, headers e tratamento de erros ficam aqui.
@@ -101,7 +101,10 @@ export const api = {
   login: (email: string, password: string) => request<AuthResponse>('/auth/login', 'POST', { email, password }),
   me: () => request<User>('/auth/me'),
 
-  listUsers: () => request<UserSummary[]>('/users'),
+  listMembers: (projectId: string) => request<ProjectMember[]>(`/projects/${projectId}/members`),
+  addMember: (projectId: string, email: string) => request<ProjectMember>(`/projects/${projectId}/members`, 'POST', { email }),
+  removeMember: (projectId: string, userId: string) => request<void>(`/projects/${projectId}/members/${userId}`, 'DELETE'),
+
   getDashboard: () => request<Dashboard>('/dashboard'),
 
   listProjects: () => request<ProjectSummary[]>('/projects'),

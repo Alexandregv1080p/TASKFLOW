@@ -6,7 +6,7 @@ using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Application.Tasks;
 
-// Tarefas só são acessíveis através de projetos do usuário atual.
+// Tarefas só são acessíveis através de projetos em que o usuário atual é dono ou membro.
 public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<TaskService> logger)
 {
     public async Task<TaskResponse> CreateAsync(Guid projectId, CreateTaskRequest request, CancellationToken ct = default)
@@ -120,7 +120,8 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         }
         else
         {
-            if (!await db.Users.AnyAsync(u => u.Id == userId, ct))
+            // Só quem está no projeto (dono ou membro) pode ser responsável.
+            if (!await db.IsProjectPersonAsync(task.ProjectId, userId, ct))
                 throw new NotFoundException(nameof(User), userId);
 
             task.AssignTo(userId);
@@ -180,15 +181,17 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
 
     private static string? FormatDate(DateTime? date) => date?.ToString("yyyy-MM-dd");
 
-    private IQueryable<TaskItem> Accessible() =>
-        db.Tasks.Where(t => db.Projects.Any(p => p.Id == t.ProjectId && p.OwnerId == currentUser.UserId));
+    // Tarefas dos projetos em que o usuário é dono ou membro.
+    private IQueryable<TaskItem> Accessible()
+    {
+        var projects = db.AccessibleProjects(currentUser.UserId);
+
+        return db.Tasks.Where(t => projects.Any(p => p.Id == t.ProjectId));
+    }
 
     private async Task<TaskItem> FindAsync(Guid id, CancellationToken ct) =>
         await Accessible().SingleOrDefaultAsync(t => t.Id == id, ct) ?? throw new NotFoundException(nameof(TaskItem), id);
 
-    private async Task EnsureProjectAccessAsync(Guid projectId, CancellationToken ct)
-    {
-        if (!await db.Projects.AnyAsync(p => p.Id == projectId && p.OwnerId == currentUser.UserId, ct))
-            throw new NotFoundException(nameof(Project), projectId);
-    }
+    private Task EnsureProjectAccessAsync(Guid projectId, CancellationToken ct) =>
+        db.FindAccessibleProjectAsync(currentUser.UserId, projectId, ct);
 }

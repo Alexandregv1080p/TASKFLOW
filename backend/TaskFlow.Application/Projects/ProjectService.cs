@@ -6,8 +6,7 @@ using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Application.Projects;
 
-// Todo acesso é restrito aos projetos do usuário atual. Projeto de outro usuário responde 404,
-// sem revelar que ele existe.
+// Acesso conforme ProjectAccess: dono e membros leem; só o dono altera e exclui.
 public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<ProjectService> logger)
 {
     public async Task<ProjectResponse> CreateAsync(CreateProjectRequest request, CancellationToken ct = default)
@@ -25,7 +24,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
 
     public async Task<IReadOnlyList<ProjectSummaryResponse>> ListAsync(int? limit = null, CancellationToken ct = default)
     {
-        var query = Owned().AsNoTracking().OrderByDescending(p => p.CreatedAt).AsQueryable();
+        var query = db.AccessibleProjects(currentUser.UserId).AsNoTracking().OrderByDescending(p => p.CreatedAt).AsQueryable();
 
         if (limit is { } take)
             query = query.Take(take);
@@ -36,6 +35,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
                 p.Id,
                 p.Name,
                 p.Description,
+                p.OwnerId,
                 p.CreatedAt,
                 db.Tasks.Count(t => t.ProjectId == p.Id),
                 db.Tasks.Count(t => t.ProjectId == p.Id && t.Status == TaskItemStatus.Done)))
@@ -43,11 +43,11 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
     }
 
     public async Task<ProjectResponse> GetAsync(Guid id, CancellationToken ct = default) =>
-        ProjectResponse.From(await FindAsync(id, ct));
+        ProjectResponse.From(await db.FindAccessibleProjectAsync(currentUser.UserId, id, ct));
 
     public async Task<ProjectResponse> UpdateAsync(Guid id, UpdateProjectRequest request, CancellationToken ct = default)
     {
-        var project = await FindAsync(id, ct);
+        var project = await db.FindOwnedProjectAsync(currentUser.UserId, id, ct);
 
         project.Update(request.Name, request.Description);
         await db.SaveChangesAsync(ct);
@@ -57,14 +57,9 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        db.Projects.Remove(await FindAsync(id, ct));
+        db.Projects.Remove(await db.FindOwnedProjectAsync(currentUser.UserId, id, ct));
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("ProjectDeleted {ProjectId} {UserId}", id, currentUser.UserId);
     }
-
-    private IQueryable<Project> Owned() => db.Projects.Where(p => p.OwnerId == currentUser.UserId);
-
-    private async Task<Project> FindAsync(Guid id, CancellationToken ct) =>
-        await Owned().SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException(nameof(Project), id);
 }

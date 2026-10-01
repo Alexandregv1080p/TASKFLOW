@@ -49,6 +49,24 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Projects", (string)null);
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.ProjectMember", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ProjectId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ProjectMembers", (string)null);
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.TaskComment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -203,6 +221,21 @@ namespace TaskFlow.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.ProjectMember", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

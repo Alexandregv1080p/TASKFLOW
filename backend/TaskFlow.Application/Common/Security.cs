@@ -16,4 +16,6 @@ public interface ITokenService
 
 public class ConflictException(string message) : Exception(message);
 
+public class ForbiddenException(string message) : Exception(message);
+
 public class InvalidCredentialsException() : Exception("Invalid email or password.");

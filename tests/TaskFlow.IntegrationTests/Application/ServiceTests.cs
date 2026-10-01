@@ -159,6 +159,92 @@ public class ServiceTests(DatabaseFixture db)
         await Assert.ThrowsAsync<NotFoundException>(() => Tasks(context, intruder).HistoryAsync(task.Id));
     }
 
+    private static ProjectMemberService Members(TaskFlowDbContext context, ICurrentUser user) =>
+        new(context, user, NullLogger<ProjectMemberService>.Instance);
+
+    private static async Task<string> EmailOfAsync(TaskFlowDbContext context, ICurrentUser user) =>
+        (await context.Users.FindAsync(user.UserId))!.Email;
+
+    [Fact]
+    public async Task Membro_trabalha_nas_tarefas_mas_nao_administra_o_projeto()
+    {
+        var owner = await SeedUserAsync();
+        var member = await SeedUserAsync();
+
+        await using var context = db.CreateContext();
+        var project = await Projects(context, owner).CreateAsync(new CreateProjectRequest("Compartilhado", null));
+        var task = await Tasks(context, owner).CreateAsync(project.Id, new CreateTaskRequest("Do dono", null, TaskPriority.Low, null));
+
+        // Antes de entrar: sem acesso.
+        await Assert.ThrowsAsync<NotFoundException>(() => Projects(context, member).GetAsync(project.Id));
+
+        var added = await Members(context, owner).AddAsync(project.Id, new AddMemberRequest((await EmailOfAsync(context, member)).ToUpperInvariant()));
+        Assert.Equal((member.UserId, false), (added.Id, added.IsOwner));
+
+        // Depois: enxerga o projeto e trabalha nas tarefas.
+        var memberTasks = Tasks(context, member);
+        Assert.Contains(await Projects(context, member).ListAsync(), p => p.Id == project.Id && p.OwnerId == owner.UserId);
+        await memberTasks.ChangeStatusAsync(task.Id, new ChangeTaskStatusRequest(TaskItemStatus.InProgress));
+        var created = await memberTasks.CreateAsync(project.Id, new CreateTaskRequest("Do membro", null, TaskPriority.High, null));
+        await memberTasks.AssignAsync(created.Id, new AssignTaskRequest(owner.UserId));
+        await memberTasks.AddCommentAsync(task.Id, new AddCommentRequest("Vi aqui."));
+        Assert.Equal(2, created.Number);
+
+        // Mas administrar o projeto é só do dono: 403.
+        await Assert.ThrowsAsync<ForbiddenException>(() => Projects(context, member).UpdateAsync(project.Id, new UpdateProjectRequest("Meu", null)));
+        await Assert.ThrowsAsync<ForbiddenException>(() => Projects(context, member).DeleteAsync(project.Id));
+        await Assert.ThrowsAsync<ForbiddenException>(() => Members(context, member).AddAsync(project.Id, new AddMemberRequest("x@example.com")));
+
+        var people = await Members(context, member).ListAsync(project.Id);
+        Assert.Equal([(owner.UserId, true), (member.UserId, false)], people.Select(p => (p.Id, p.IsOwner)));
+    }
+
+    [Fact]
+    public async Task Regras_de_gestao_de_membros()
+    {
+        var owner = await SeedUserAsync();
+        var member = await SeedUserAsync();
+        var other = await SeedUserAsync();
+
+        await using var context = db.CreateContext();
+        var project = await Projects(context, owner).CreateAsync(new CreateProjectRequest("Compartilhado", null));
+        var members = Members(context, owner);
+        var memberEmail = await EmailOfAsync(context, member);
+
+        await members.AddAsync(project.Id, new AddMemberRequest(memberEmail));
+        await members.AddAsync(project.Id, new AddMemberRequest(await EmailOfAsync(context, other)));
+
+        // E-mail sem conta, quem já está no projeto e o próprio dono.
+        await Assert.ThrowsAsync<NotFoundException>(() => members.AddAsync(project.Id, new AddMemberRequest("ninguem@example.com")));
+        await Assert.ThrowsAsync<ConflictException>(() => members.AddAsync(project.Id, new AddMemberRequest(memberEmail)));
+        var ownerEmail = await EmailOfAsync(context, owner);
+        await Assert.ThrowsAsync<ConflictException>(() => members.AddAsync(project.Id, new AddMemberRequest(ownerEmail)));
+
+        // O dono não pode ser removido; membro não remove outro membro.
+        await Assert.ThrowsAsync<DomainException>(() => members.RemoveAsync(project.Id, owner.UserId));
+        await Assert.ThrowsAsync<ForbiddenException>(() => Members(context, member).RemoveAsync(project.Id, other.UserId));
+
+        // Só quem está no projeto pode ser responsável.
+        var tasks = Tasks(context, owner);
+        var task = await tasks.CreateAsync(project.Id, new CreateTaskRequest("Tarefa", null, TaskPriority.Low, null));
+        var outsider = await SeedUserAsync();
+        await Assert.ThrowsAsync<NotFoundException>(() => tasks.AssignAsync(task.Id, new AssignTaskRequest(outsider.UserId)));
+        await tasks.AssignAsync(task.Id, new AssignTaskRequest(member.UserId));
+
+        // Membro sai por conta própria: perde o acesso e a tarefa dele fica sem responsável, com histórico.
+        await Members(context, member).RemoveAsync(project.Id, member.UserId);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => Projects(context, member).GetAsync(project.Id));
+        Assert.Null((await tasks.GetAsync(task.Id)).AssignedToId);
+
+        var last = (await tasks.HistoryAsync(task.Id)).First();
+        Assert.Equal((TaskEventType.AssigneeChanged, member.UserId.ToString(), null), (last.Type, last.OldValue, last.NewValue));
+
+        // Dono remove o outro membro.
+        await members.RemoveAsync(project.Id, other.UserId);
+        Assert.Equal(owner.UserId, Assert.Single(await members.ListAsync(project.Id)).Id);
+    }
+
     [Fact]
     public async Task Comentarios_adicionar_listar_e_excluir()
     {

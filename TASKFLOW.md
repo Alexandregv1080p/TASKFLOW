@@ -1101,9 +1101,32 @@ A autorização deverá impedir que um usuário acesse ou modifique projetos aos
 Implementado:
 
 * Política padrão (`FallbackPolicy`) exige usuário autenticado em **todos** os endpoints; só `register`, `login` e `/health` são anônimos.
-* Cada usuário vê apenas os projetos que criou, e as tarefas desses projetos; dashboard também é por usuário. Recurso de outro usuário responde **404** (não revela que existe).
-* Papéis (`User`/`Admin`) e membros de projeto ainda não foram criados: sem um caso de uso que precise deles, seriam código sem uso. Entram quando houver compartilhamento de projetos.
-* `GET /api/users` lista apenas `id` e `name` (para escolher responsável), sem expor e-mails.
+* Cada usuário vê apenas os projetos de que participa, e as tarefas desses projetos; dashboard também é por usuário. Recurso sem acesso responde **404** (não revela que existe).
+
+**Compartilhamento de projetos** (papéis `ProjectOwner` e `ProjectMember` previstos acima):
+
+| Ação | Dono | Membro |
+| --- | --- | --- |
+| Ver o projeto, o quadro e as pessoas | sim | sim |
+| Criar, editar, mover e excluir tarefas; comentar | sim | sim |
+| Editar ou excluir o projeto | sim | não (403) |
+| Adicionar pessoas | sim | não (403) |
+| Remover pessoas | qualquer membro | só a si mesmo (sair) |
+
+```http
+GET    /api/projects/{id}/members            → [{ id, name, isOwner }]  (dono primeiro, sem e-mails)
+POST   /api/projects/{id}/members            { "email": "..." }  → 201
+DELETE /api/projects/{id}/members/{userId}   → 204
+```
+
+* A regra de acesso fica em um único lugar (`ProjectAccess`, na Application) e é usada por projetos, tarefas, comentários, histórico e dashboard.
+* 404 x 403: quem não participa recebe 404; membro tentando ação de dono recebe 403, porque já sabe que o projeto existe.
+* Adicionar é direto, pelo e-mail de quem já tem conta (sem convite por e-mail, que exigiria serviço de envio). Trade-off conhecido: a resposta "nenhuma conta com esse e-mail" permite a um usuário autenticado descobrir se um e-mail está cadastrado; convites pendentes resolveriam isso.
+* O dono não pode ser removido nem trocado. Membro repetido é barrado pela chave composta `(ProjectId, UserId)` e responde 409.
+* Só pessoas do projeto podem ser responsáveis por tarefas. Ao remover alguém (ou a pessoa sair), as tarefas dela naquele projeto ficam sem responsável, com registro no histórico, na mesma transação.
+* O antigo `GET /api/users` (todos os usuários) foi removido: a lista de responsáveis vem das pessoas do projeto.
+* O papel global `Admin` continua sem caso de uso e não foi criado.
+* Limitação: no histórico, ações de quem já saiu do projeto aparecem como "Alguém", pois os nomes vêm da lista atual de pessoas.
 
 ---
 
@@ -2072,6 +2095,7 @@ Decisões:
 * [x] Audit Events (histórico de alterações da tarefa no PostgreSQL, seção 52)
 * [x] Drag-and-drop no Kanban (seção 37)
 * [x] Comentários nas tarefas (além da spec original)
+* [x] Compartilhamento de projetos com papéis de dono e membro (seção 34)
 
 Comentários:
 
