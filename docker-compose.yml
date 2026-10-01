@@ -53,6 +53,9 @@ services:
       Database__ApplyMigrationsOnStartup: "true"
       # Swagger ligado porque este compose é o ambiente de demonstração local.
       Swagger__Enabled: "true"
+      # 8080 = API; 9090 = /metrics, só dentro da rede Docker (não publicada no host).
+      ASPNETCORE_HTTP_PORTS: "8080;9090"
+      Metrics__Port: "9090"
 
     ports:
       - "${API_PORT:-8080}:8080"
@@ -78,10 +81,65 @@ services:
     networks:
       - frontend
 
+  # Observabilidade: sobe só com  docker compose --profile observability up -d
+  # Portas presas a 127.0.0.1: o Prometheus não tem autenticação e não deve ficar exposto na rede.
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: taskflow-prometheus
+    profiles: [observability]
+    restart: unless-stopped
+
+    depends_on:
+      - api
+
+    volumes:
+      - ./docker/prometheus:/etc/prometheus:ro
+      - taskflow_prometheus_data:/prometheus
+
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+
+    networks:
+      - backend
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: taskflow-grafana
+    profiles: [observability]
+    restart: unless-stopped
+
+    depends_on:
+      - prometheus
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      # Sem GRAFANA_PASSWORD no .env vale o padrão do Grafana, que obriga a trocar no primeiro login.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/taskflow.json
+
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - taskflow_grafana_data:/var/lib/grafana
+
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+
+    networks:
+      - monitoring
+
 # O frontend não enxerga o banco: só a API está nas duas redes.
+# O Grafana só fala com o Prometheus; só o Prometheus alcança a porta de métricas da API.
 networks:
   backend:
   frontend:
+  monitoring:
 
 volumes:
   taskflow_postgres_data:
+  taskflow_prometheus_data:
+  taskflow_grafana_data:

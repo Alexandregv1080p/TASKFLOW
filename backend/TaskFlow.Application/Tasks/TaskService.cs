@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Common;
 using TaskFlow.Domain.Entities;
+using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Application.Tasks;
 
 // Tarefas só são acessíveis através de projetos do usuário atual.
-public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser)
+public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<TaskService> logger)
 {
     public async Task<TaskResponse> CreateAsync(Guid projectId, CreateTaskRequest request, CancellationToken ct = default)
     {
@@ -20,6 +22,9 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser)
 
         db.Tasks.Add(task);
         await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("TaskCreated {TaskId} {ProjectId} {UserId}", task.Id, projectId, currentUser.UserId);
+        TaskFlowMetrics.TasksCreated.Add(1);
 
         return TaskResponse.From(task);
     }
@@ -59,9 +64,19 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser)
     public async Task<TaskResponse> ChangeStatusAsync(Guid id, ChangeTaskStatusRequest request, CancellationToken ct = default)
     {
         var task = await FindAsync(id, ct);
+        var oldStatus = task.Status;
 
         task.ChangeStatus(request.Status);
         await db.SaveChangesAsync(ct);
+
+        if (oldStatus != task.Status)
+        {
+            logger.LogInformation(
+                "TaskStatusChanged {TaskId} {OldStatus} {NewStatus} {UserId}", task.Id, oldStatus, task.Status, currentUser.UserId);
+
+            if (task.Status == TaskItemStatus.Done)
+                TaskFlowMetrics.TasksCompleted.Add(1);
+        }
 
         return TaskResponse.From(task);
     }

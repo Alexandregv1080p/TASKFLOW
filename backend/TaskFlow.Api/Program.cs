@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Prometheus;
 using TaskFlow.Api;
 using TaskFlow.Api.Middlewares;
 using TaskFlow.Application;
@@ -14,6 +15,19 @@ using TaskFlow.Infrastructure.Persistence;
 using TaskFlow.Infrastructure.Security;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Fora de Development os logs saem em JSON, uma linha por evento: cada propriedade do template
+// ({ProjectId}, {UserId}...) vira um campo pesquisável em qualquer agregador de logs.
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Logging.ClearProviders();
+    builder.Logging.AddJsonConsole(o =>
+    {
+        o.IncludeScopes = true;
+        o.UseUtcTimestamp = true;
+        o.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+    });
+}
 
 // Em produção vêm de variáveis de ambiente: ConnectionStrings__Default e Jwt__Secret.
 var connectionString = builder.Configuration.GetConnectionString("Default")
@@ -88,6 +102,11 @@ builder.Services.AddSwaggerGen(o =>
 
 builder.Services.AddHealthChecks().AddDbContextCheck<TaskFlowDbContext>("postgres");
 
+// Por padrão o prometheus-net só começa a escutar System.Diagnostics.Metrics no primeiro scrape,
+// perdendo o que foi medido antes. Aqui a escuta começa junto com a aplicação.
+Metrics.SuppressDefaultMetrics(new SuppressDefaultMetricOptions { SuppressMeters = true });
+MeterAdapter.StartListening();
+
 var app = builder.Build();
 
 // Em Development sempre; em outros ambientes só se ligado por configuração (ex.: Docker Compose).
@@ -109,10 +128,21 @@ app.UseExceptionHandler(_ => { });
 
 app.UseHttpsRedirection();
 
+// Métricas HTTP (contagem, status e latência por endpoint). Depois do roteamento para ter o nome da rota.
+app.UseRouting();
+app.UseHttpMetrics();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// /metrics para o Prometheus. Com Metrics:Port definido (Docker), só responde nessa porta interna,
+// que não é publicada no host nem passa pelo nginx. As métricas de negócio (TaskFlowMetrics) e as do
+// Npgsql/ASP.NET, publicadas via System.Diagnostics.Metrics, são exportadas automaticamente.
+var metrics = app.MapMetrics().AllowAnonymous();
+if (app.Configuration.GetValue<int?>("Metrics:Port") is { } metricsPort)
+    metrics.RequireHost($"*:{metricsPort}");
 
 app.MapHealthChecks("/health", new()
 {

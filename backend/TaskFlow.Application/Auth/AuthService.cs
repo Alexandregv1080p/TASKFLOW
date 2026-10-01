@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Common;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Exceptions;
@@ -16,7 +17,12 @@ public record UserResponse(Guid Id, string Name, string Email)
 
 public record AuthResponse(string AccessToken, DateTime ExpiresAt, UserResponse User);
 
-public class AuthService(ITaskFlowDbContext db, IPasswordHasher hasher, ITokenService tokens, ICurrentUser currentUser)
+public class AuthService(
+    ITaskFlowDbContext db,
+    IPasswordHasher hasher,
+    ITokenService tokens,
+    ICurrentUser currentUser,
+    ILogger<AuthService> logger)
 {
     public const int PasswordMinLength = 8;
     public const int PasswordMaxLength = 128;
@@ -36,6 +42,8 @@ public class AuthService(ITaskFlowDbContext db, IPasswordHasher hasher, ITokenSe
         db.Users.Add(user);
         await db.SaveChangesAsync(ct);
 
+        logger.LogInformation("UserRegistered {UserId}", user.Id);
+
         return Issue(user);
     }
 
@@ -46,7 +54,15 @@ public class AuthService(ITaskFlowDbContext db, IPasswordHasher hasher, ITokenSe
 
         // Mesma resposta para e-mail inexistente e senha errada: não revela quais e-mails existem.
         if (user is null || !hasher.Verify(user.PasswordHash, request.Password))
+        {
+            // Sem o e-mail tentado: não coloca dado pessoal nem pista de enumeração nos logs.
+            logger.LogWarning("LoginFailed");
+            TaskFlowMetrics.Logins.Add(1, new KeyValuePair<string, object?>("result", "failure"));
             throw new InvalidCredentialsException();
+        }
+
+        logger.LogInformation("LoginSucceeded {UserId}", user.Id);
+        TaskFlowMetrics.Logins.Add(1, new KeyValuePair<string, object?>("result", "success"));
 
         return Issue(user);
     }

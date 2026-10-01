@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # /metrics da API na porta interna (não publicada no host).
+  - job_name: taskflow-api
+    static_configs:
+      - targets: ["api:9090"]

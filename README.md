@@ -42,6 +42,16 @@ docker compose up -d --build
 
 Portas ocupadas? Ajuste `WEB_PORT` / `API_PORT` no `.env`.
 
+### Observabilidade (opcional)
+
+```bash
+docker compose --profile observability up -d
+```
+
+* Grafana: http://localhost:3001 (usuário `admin`, senha `GRAFANA_PASSWORD` do `.env`), dashboard "TaskFlow" já provisionado
+* Prometheus: http://localhost:9090 (alvos em Status > Targets, regras em Alerts)
+* Logs estruturados em JSON: `docker logs taskflow-api`
+
 ## Rodando para desenvolvimento
 
 Pré-requisitos: .NET 8 SDK, Node.js 20+ e Docker.

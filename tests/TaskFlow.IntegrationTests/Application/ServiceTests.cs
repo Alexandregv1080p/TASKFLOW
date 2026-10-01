@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Application.Common;
 using TaskFlow.Application.Projects;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Exceptions;
+using TaskFlow.Infrastructure.Persistence;
 using TaskFlow.IntegrationTests.Persistence;
 
 namespace TaskFlow.IntegrationTests.Application;
@@ -12,6 +14,12 @@ namespace TaskFlow.IntegrationTests.Application;
 public class ServiceTests(DatabaseFixture db)
 {
     private record FakeCurrentUser(Guid UserId) : ICurrentUser;
+
+    private static ProjectService Projects(TaskFlowDbContext context, ICurrentUser user) =>
+        new(context, user, NullLogger<ProjectService>.Instance);
+
+    private static TaskService Tasks(TaskFlowDbContext context, ICurrentUser user) =>
+        new(context, user, NullLogger<TaskService>.Instance);
 
     private async Task<ICurrentUser> SeedUserAsync()
     {
@@ -30,7 +38,7 @@ public class ServiceTests(DatabaseFixture db)
         var user = await SeedUserAsync();
 
         await using var context = db.CreateContext();
-        var service = new ProjectService(context, user);
+        var service = Projects(context,user);
 
         var created = await service.CreateAsync(new CreateProjectRequest("Website", null));
         var updated = await service.UpdateAsync(created.Id, new UpdateProjectRequest("Site novo", "Descrição"));
@@ -51,11 +59,11 @@ public class ServiceTests(DatabaseFixture db)
         var intruder = await SeedUserAsync();
 
         await using var context = db.CreateContext();
-        var project = await new ProjectService(context, owner).CreateAsync(new CreateProjectRequest("Privado", null));
-        var task = await new TaskService(context, owner).CreateAsync(project.Id, new CreateTaskRequest("Segredo", null, TaskPriority.Low, null));
+        var project = await Projects(context,owner).CreateAsync(new CreateProjectRequest("Privado", null));
+        var task = await Tasks(context,owner).CreateAsync(project.Id, new CreateTaskRequest("Segredo", null, TaskPriority.Low, null));
 
-        var projects = new ProjectService(context, intruder);
-        var tasks = new TaskService(context, intruder);
+        var projects = Projects(context,intruder);
+        var tasks = Tasks(context,intruder);
 
         Assert.DoesNotContain(await projects.ListAsync(), p => p.Id == project.Id);
         await Assert.ThrowsAsync<NotFoundException>(() => projects.GetAsync(project.Id));
@@ -72,8 +80,8 @@ public class ServiceTests(DatabaseFixture db)
         var user = await SeedUserAsync();
 
         await using var context = db.CreateContext();
-        var project = await new ProjectService(context, user).CreateAsync(new CreateProjectRequest("Website", null));
-        var service = new TaskService(context, user);
+        var project = await Projects(context,user).CreateAsync(new CreateProjectRequest("Website", null));
+        var service = Tasks(context,user);
 
         var task = await service.CreateAsync(project.Id, new CreateTaskRequest("Login", null, TaskPriority.Low, null));
         await service.UpdateAsync(task.Id, new UpdateTaskRequest("Login JWT", "Detalhes", TaskPriority.High, new DateTime(2026, 10, 5)));
@@ -100,10 +108,10 @@ public class ServiceTests(DatabaseFixture db)
         var user = await SeedUserAsync();
 
         await using var context = db.CreateContext();
-        var projects = new ProjectService(context, user);
+        var projects = Projects(context,user);
         var a = await projects.CreateAsync(new CreateProjectRequest("A", null));
         var b = await projects.CreateAsync(new CreateProjectRequest("B", null));
-        var service = new TaskService(context, user);
+        var service = Tasks(context,user);
 
         var first = await service.CreateAsync(a.Id, new CreateTaskRequest("1", null, TaskPriority.Low, null));
         var second = await service.CreateAsync(a.Id, new CreateTaskRequest("2", null, TaskPriority.Low, null));
@@ -120,7 +128,7 @@ public class ServiceTests(DatabaseFixture db)
         var user = await SeedUserAsync();
 
         await using var context = db.CreateContext();
-        var service = new TaskService(context, user);
+        var service = Tasks(context,user);
 
         await Assert.ThrowsAsync<NotFoundException>(() =>
             service.CreateAsync(Guid.NewGuid(), new CreateTaskRequest("Login", null, TaskPriority.Low, null)));
@@ -133,8 +141,8 @@ public class ServiceTests(DatabaseFixture db)
         var user = await SeedUserAsync();
 
         await using var context = db.CreateContext();
-        var project = await new ProjectService(context, user).CreateAsync(new CreateProjectRequest("Website", null));
-        var service = new TaskService(context, user);
+        var project = await Projects(context,user).CreateAsync(new CreateProjectRequest("Website", null));
+        var service = Tasks(context,user);
         var task = await service.CreateAsync(project.Id, new CreateTaskRequest("Login", null, TaskPriority.Low, null));
 
         await Assert.ThrowsAsync<DomainException>(() =>

@@ -1,0 +1,39 @@
+# Regras de alerta. Aparecem em Prometheus > Alerts e em Grafana > Alerting.
+# Entrega (e-mail, Slack...) exigiria um Alertmanager: fica para quando houver quem receba.
+
+groups:
+  - name: taskflow
+    rules:
+      - alert: ApiFora
+        expr: up{job="taskflow-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: A API do TaskFlow não responde ao Prometheus há mais de 1 minuto.
+
+      - alert: TaxaDeErrosAlta
+        expr: |
+          sum(rate(http_requests_received_total{code=~"5.."}[5m]))
+            / sum(rate(http_requests_received_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Mais de 5% das requisições terminaram em erro 5xx nos últimos 5 minutos.
+
+      - alert: LatenciaAlta
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: O p95 de latência está acima de 1 segundo há 5 minutos.
+
+      - alert: MuitasFalhasDeLogin
+        expr: delta(taskflow_logins{result="failure"}[5m]) > 20
+        labels:
+          severity: warning
+        annotations:
+          summary: Mais de 20 logins falharam em 5 minutos (possível tentativa de força bruta).

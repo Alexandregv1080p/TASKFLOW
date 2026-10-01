@@ -2019,6 +2019,8 @@ docker:  compose build → sobe a stack → smoke test pelo nginx
 
 # Fase 11 — Cloud
 
+> **Adiada (decisão de 30/09/2026).** Hospedagem exige conta e cartão em um provedor; nenhuma fase seguinte depende dela, então o projeto seguiu para a observabilidade, que roda inteira em Docker local. O que já existe e será reaproveitado no deploy: imagens publicadas no `ghcr.io` pelo CI, `docker-compose.yml` pronto para uma VM e configuração 100% por variáveis de ambiente. Faltará: provisionar a VM, HTTPS (proxy reverso com certificado), job de deploy no GitHub Actions e backup do PostgreSQL.
+
 * [ ] Escolher AWS ou DigitalOcean
 * [ ] Criar servidor/infraestrutura
 * [ ] Configurar Docker
@@ -2032,13 +2034,25 @@ docker:  compose build → sobe a stack → smoke test pelo nginx
 
 # Fase 12 — Observabilidade
 
-* [ ] Structured Logging
-* [ ] Metrics
-* [ ] Prometheus
-* [ ] Grafana
-* [ ] Health Checks
-* [ ] Dashboards
-* [ ] Alertas
+* [x] Structured Logging
+* [x] Metrics
+* [x] Prometheus
+* [x] Grafana
+* [x] Health Checks (Fase 5)
+* [x] Dashboards
+* [x] Alertas (regras no Prometheus; entrega por Alertmanager fica para quando houver quem receba)
+
+Como usar: `docker compose --profile observability up -d` → Grafana em `http://localhost:3001` (usuário `admin`, senha `GRAFANA_PASSWORD` do `.env`) e Prometheus em `http://localhost:9090`. Sem o perfil, o `up` normal não sobe os dois.
+
+Decisões:
+
+* **Logs:** logger nativo do .NET, sem biblioteca extra. Fora de Development, uma linha JSON por evento com `Timestamp` UTC, nível, categoria, `TraceId`/`SpanId` da requisição e cada propriedade do template como campo (`ProjectId`, `UserId`...). Eventos de negócio: `UserRegistered`, `LoginSucceeded`, `LoginFailed` (sem o e-mail tentado: não grava dado pessoal nem pista de enumeração), `ProjectCreated`, `ProjectDeleted`, `TaskCreated`, `TaskStatusChanged`. Erros não tratados já eram logados pelo `GlobalExceptionHandler`.
+* **Métricas de negócio na Application** com `System.Diagnostics.Metrics` (biblioteca padrão), sem a camada conhecer o Prometheus: `taskflow_projects_created`, `taskflow_tasks_created`, `taskflow_tasks_completed`, `taskflow_logins{result}`. A API exporta com `prometheus-net`, junto com as métricas HTTP (contagem, status e latência por endpoint), do processo (.NET, memória) e do pool de conexões do Npgsql.
+* **`/metrics` em porta interna:** no Docker a API escuta também na 9090 e o endpoint só responde nela (`RequireHost`). Essa porta não é publicada no host nem passa pelo nginx; só o Prometheus, na rede `backend`, a alcança. Na porta pública o caminho não existe.
+* **Redes:** Grafana só fala com o Prometheus (rede `monitoring`). As portas do Prometheus e do Grafana no host ficam presas a `127.0.0.1`, porque o Prometheus não tem autenticação.
+* **Grafana provisionado por arquivo** (`docker/grafana`): fonte de dados e dashboard "TaskFlow" versionados no Git, sem configuração manual. Painéis: API no ar, requisições/s, erros 5xx, latência p50/p95/p99, requisições por status e por endpoint, memória, conexões com o PostgreSQL, projetos/tarefas criados e concluídos, logins por resultado.
+* **Alertas** (`docker/prometheus/alerts.yml`): `ApiFora`, `TaxaDeErrosAlta` (>5% de 5xx), `LatenciaAlta` (p95 > 1 s) e `MuitasFalhasDeLogin` (possível força bruta).
+* Detalhe de implementação: o `prometheus-net` só começa a escutar `System.Diagnostics.Metrics` no primeiro scrape, perdendo o que foi medido antes; a escuta é iniciada explicitamente na subida da API. Os contadores de negócio contam desde a última inicialização da API.
 
 ---
 
@@ -2404,9 +2418,9 @@ Ao implementar este projeto:
 ## Observability
 
 * [x] Health Checks
-* [ ] Structured Logs
-* [ ] Prometheus
-* [ ] Grafana
+* [x] Structured Logs
+* [x] Prometheus
+* [x] Grafana
 
 ## Advanced
 

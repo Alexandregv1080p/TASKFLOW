@@ -40,6 +40,20 @@ public class ApiTests(DatabaseFixture db) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Metrics_expoe_metricas_http_e_de_negocio()
+    {
+        var projectId = (await CreateProjectAsync()).GetProperty("id").GetString();
+        await _client.PostAsJsonAsync($"/api/projects/{projectId}/tasks", new { title = "Medir", priority = "Low" });
+
+        // Formato de texto do Prometheus, acessível sem token (o scraper não autentica).
+        var metrics = await db.Api.CreateClient().GetStringAsync("/metrics");
+
+        Assert.Contains("http_request_duration_seconds", metrics);
+        Assert.Contains("taskflow_tasks_created", metrics);
+        Assert.Contains("taskflow_projects_created", metrics);
+    }
+
+    [Fact]
     public async Task Crud_de_projeto()
     {
         var project = await CreateProjectAsync();

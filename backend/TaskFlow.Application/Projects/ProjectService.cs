@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Common;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
@@ -7,7 +8,7 @@ namespace TaskFlow.Application.Projects;
 
 // Todo acesso é restrito aos projetos do usuário atual. Projeto de outro usuário responde 404,
 // sem revelar que ele existe.
-public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser)
+public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<ProjectService> logger)
 {
     public async Task<ProjectResponse> CreateAsync(CreateProjectRequest request, CancellationToken ct = default)
     {
@@ -15,6 +16,9 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser)
 
         db.Projects.Add(project);
         await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("ProjectCreated {ProjectId} {UserId}", project.Id, project.OwnerId);
+        TaskFlowMetrics.ProjectsCreated.Add(1);
 
         return ProjectResponse.From(project);
     }
@@ -55,6 +59,8 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser)
     {
         db.Projects.Remove(await FindAsync(id, ct));
         await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("ProjectDeleted {ProjectId} {UserId}", id, currentUser.UserId);
     }
 
     private IQueryable<Project> Owned() => db.Projects.Where(p => p.OwnerId == currentUser.UserId);
