@@ -160,6 +160,38 @@ public class ServiceTests(DatabaseFixture db)
     }
 
     [Fact]
+    public async Task Comentarios_adicionar_listar_e_excluir()
+    {
+        var owner = await SeedUserAsync();
+        var intruder = await SeedUserAsync();
+
+        await using var context = db.CreateContext();
+        var project = await Projects(context, owner).CreateAsync(new CreateProjectRequest("Website", null));
+        var service = Tasks(context, owner);
+        var task = await service.CreateAsync(project.Id, new CreateTaskRequest("Login", null, TaskPriority.Low, null));
+
+        var first = await service.AddCommentAsync(task.Id, new AddCommentRequest("  Primeiro comentário  "));
+        var second = await service.AddCommentAsync(task.Id, new AddCommentRequest("Segundo"));
+
+        Assert.Equal("Primeiro comentário", first.Body);
+        Assert.Equal(owner.UserId, first.AuthorId);
+        Assert.Equal([second.Id, first.Id], (await service.ListCommentsAsync(task.Id)).Select(c => c.Id));
+
+        await Assert.ThrowsAsync<DomainException>(() => service.AddCommentAsync(task.Id, new AddCommentRequest("   ")));
+        await Assert.ThrowsAsync<DomainException>(() =>
+            service.AddCommentAsync(task.Id, new AddCommentRequest(new string('a', TaskComment.BodyMaxLength + 1))));
+
+        // Quem não tem acesso ao projeto não lê, não comenta e não exclui.
+        var outsider = Tasks(context, intruder);
+        await Assert.ThrowsAsync<NotFoundException>(() => outsider.ListCommentsAsync(task.Id));
+        await Assert.ThrowsAsync<NotFoundException>(() => outsider.AddCommentAsync(task.Id, new AddCommentRequest("oi")));
+        await Assert.ThrowsAsync<NotFoundException>(() => outsider.DeleteCommentAsync(first.Id));
+
+        await service.DeleteCommentAsync(first.Id);
+        Assert.Equal(second.Id, Assert.Single(await service.ListCommentsAsync(task.Id)).Id);
+    }
+
+    [Fact]
     public async Task Tarefas_recebem_numero_sequencial_por_projeto()
     {
         var user = await SeedUserAsync();

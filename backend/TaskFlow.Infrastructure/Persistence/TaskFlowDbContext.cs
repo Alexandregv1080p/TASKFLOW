@@ -14,6 +14,8 @@ public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : Db
 
     public DbSet<TaskEvent> TaskEvents => Set<TaskEvent>();
 
+    public DbSet<TaskComment> TaskComments => Set<TaskComment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(TaskFlowDbContext).Assembly);
 }

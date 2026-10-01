@@ -112,6 +112,30 @@ public class ApiTests(DatabaseFixture db) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Comentarios_pela_api()
+    {
+        var projectId = (await CreateProjectAsync()).GetProperty("id").GetString();
+        var task = await (await _client.PostAsJsonAsync($"/api/projects/{projectId}/tasks",
+            new { title = "Login", priority = "Low" })).Content.ReadFromJsonAsync<JsonElement>();
+        var taskId = task.GetProperty("id").GetString();
+
+        var created = await _client.PostAsJsonAsync($"/api/tasks/{taskId}/comments", new { body = "Falta o teste de carga." });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var commentId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+
+        await AssertErrorAsync(await _client.PostAsJsonAsync($"/api/tasks/{taskId}/comments", new { body = "" }), HttpStatusCode.BadRequest);
+
+        var comments = await _client.GetFromJsonAsync<JsonElement>($"/api/tasks/{taskId}/comments");
+        Assert.Equal("Falta o teste de carga.", Assert.Single(comments.EnumerateArray()).GetProperty("body").GetString());
+
+        var other = await db.CreateAuthenticatedClientAsync("Outro");
+        await AssertErrorAsync(await other.DeleteAsync($"/api/comments/{commentId}"), HttpStatusCode.NotFound);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await _client.DeleteAsync($"/api/comments/{commentId}")).StatusCode);
+        Assert.Equal(0, (await _client.GetFromJsonAsync<JsonElement>($"/api/tasks/{taskId}/comments")).GetArrayLength());
+    }
+
+    [Fact]
     public async Task Regra_de_dominio_violada_retorna_400()
     {
         var projectId = (await CreateProjectAsync()).GetProperty("id").GetString();

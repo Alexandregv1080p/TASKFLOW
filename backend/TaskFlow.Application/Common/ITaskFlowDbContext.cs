@@ -15,5 +15,7 @@ public interface ITaskFlowDbContext
 
     DbSet<TaskEvent> TaskEvents { get; }
 
+    DbSet<TaskComment> TaskComments { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -152,7 +152,7 @@ export function TaskDetail() {
 
               <section className="task-detail__section">
                 <h3>Atividade</h3>
-                <TaskActivity taskId={task.id} version={version} users={users} />
+                <TaskActivity taskId={task.id} version={version} users={users} currentUserId={user?.id} />
               </section>
             </div>
 

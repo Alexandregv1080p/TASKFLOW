@@ -1518,9 +1518,60 @@ textarea {
   vertical-align: -1px;
 }
 
-.activity__time {
+.activity__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.activity__comment {
+  margin-top: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.activity__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 22px;
+  margin-top: 0.15rem;
   font-size: 0.78rem;
   color: var(--muted);
+}
+
+.icon-btn--xs {
+  width: 22px;
+  height: 22px;
+}
+
+.comment-composer {
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 0.25rem;
+}
+
+.comment-composer__field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comment-composer textarea {
+  resize: none;
+}
+
+.comment-composer__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .activity__error {

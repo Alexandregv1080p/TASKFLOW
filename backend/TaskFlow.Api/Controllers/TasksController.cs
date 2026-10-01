@@ -26,6 +26,27 @@ public class TasksController(TaskService tasks) : ControllerBase
     [HttpGet("tasks/{id:guid}/history")]
     public Task<IReadOnlyList<TaskEventResponse>> History(Guid id, CancellationToken ct) => tasks.HistoryAsync(id, ct);
 
+    [HttpGet("tasks/{id:guid}/comments")]
+    public Task<IReadOnlyList<TaskCommentResponse>> ListComments(Guid id, CancellationToken ct) =>
+        tasks.ListCommentsAsync(id, ct);
+
+    [HttpPost("tasks/{id:guid}/comments")]
+    [ProducesResponseType<TaskCommentResponse>(StatusCodes.Status201Created)]
+    public async Task<IActionResult> AddComment(Guid id, AddCommentRequest request, CancellationToken ct)
+    {
+        var comment = await tasks.AddCommentAsync(id, request, ct);
+
+        return CreatedAtAction(nameof(ListComments), new { id }, comment);
+    }
+
+    [HttpDelete("comments/{id:guid}")]
+    public async Task<IActionResult> DeleteComment(Guid id, CancellationToken ct)
+    {
+        await tasks.DeleteCommentAsync(id, ct);
+
+        return NoContent();
+    }
+
     [HttpPut("tasks/{id:guid}")]
     public Task<TaskResponse> Update(Guid id, UpdateTaskRequest request, CancellationToken ct) =>
         tasks.UpdateAsync(id, request, ct);

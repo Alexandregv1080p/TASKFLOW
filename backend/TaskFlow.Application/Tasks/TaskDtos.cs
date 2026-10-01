@@ -15,6 +15,13 @@ public record AssignTaskRequest(Guid? UserId);
 // OldValue/NewValue: nomes de enum (status, prioridade), data yyyy-MM-dd, id do usuário (responsável) ou texto (título).
 public record TaskEventResponse(Guid Id, TaskEventType Type, string? OldValue, string? NewValue, Guid? UserId, DateTime CreatedAt);
 
+public record AddCommentRequest(string Body);
+
+public record TaskCommentResponse(Guid Id, Guid TaskId, Guid? AuthorId, string Body, DateTime CreatedAt)
+{
+    public static TaskCommentResponse From(TaskComment c) => new(c.Id, c.TaskId, c.AuthorId, c.Body, c.CreatedAt);
+}
+
 public record TaskResponse(
     Guid Id,
     Guid ProjectId,

@@ -134,6 +134,46 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         return TaskResponse.From(task);
     }
 
+    public async Task<IReadOnlyList<TaskCommentResponse>> ListCommentsAsync(Guid taskId, CancellationToken ct = default)
+    {
+        var task = await FindAsync(taskId, ct);
+
+        var comments = await db.TaskComments.AsNoTracking()
+            .Where(c => c.TaskId == task.Id)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync(ct);
+
+        return comments.Select(TaskCommentResponse.From).ToList();
+    }
+
+    public async Task<TaskCommentResponse> AddCommentAsync(Guid taskId, AddCommentRequest request, CancellationToken ct = default)
+    {
+        var task = await FindAsync(taskId, ct);
+        var comment = new TaskComment(task.Id, currentUser.UserId, request.Body);
+
+        db.TaskComments.Add(comment);
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("CommentAdded {CommentId} {TaskId} {UserId}", comment.Id, task.Id, currentUser.UserId);
+
+        return TaskCommentResponse.From(comment);
+    }
+
+    // Só o autor exclui o próprio comentário. Comentário de outra pessoa, ou em tarefa sem acesso,
+    // responde 404: não revela que ele existe.
+    public async Task DeleteCommentAsync(Guid commentId, CancellationToken ct = default)
+    {
+        var comment = await db.TaskComments.SingleOrDefaultAsync(
+                c => c.Id == commentId
+                    && c.AuthorId == currentUser.UserId
+                    && Accessible().Any(t => t.Id == c.TaskId),
+                ct)
+            ?? throw new NotFoundException(nameof(TaskComment), commentId);
+
+        db.TaskComments.Remove(comment);
+        await db.SaveChangesAsync(ct);
+    }
+
     // O evento entra no mesmo SaveChanges da alteração: ou os dois são gravados, ou nenhum.
     private void Record(TaskItem task, TaskEventType type, string? oldValue = null, string? newValue = null) =>
         db.TaskEvents.Add(new TaskEvent(task.Id, currentUser.UserId, type, oldValue, newValue));

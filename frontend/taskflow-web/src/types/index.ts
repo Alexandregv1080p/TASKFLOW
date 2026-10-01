@@ -71,6 +71,14 @@ export interface TaskEvent {
   createdAt: string
 }
 
+export interface TaskComment {
+  id: string
+  taskId: string
+  authorId: string | null
+  body: string
+  createdAt: string
+}
+
 export interface Dashboard {
   totalProjects: number
   totalTasks: number

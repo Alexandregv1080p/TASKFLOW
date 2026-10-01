@@ -2070,6 +2070,20 @@ Decisões:
 
 * [ ] MongoDB (não adotado por ora; ver decisão na seção 52)
 * [x] Audit Events (histórico de alterações da tarefa no PostgreSQL, seção 52)
+* [x] Drag-and-drop no Kanban (seção 37)
+* [x] Comentários nas tarefas (além da spec original)
+
+Comentários:
+
+```http
+GET    /api/tasks/{id}/comments     (mais recente primeiro)
+POST   /api/tasks/{id}/comments     { "body": "..." }   → 201
+DELETE /api/comments/{id}           → 204
+```
+
+* Texto de 1 a 2000 caracteres (validado no domínio). Acesso igual ao da tarefa: só em projetos do usuário.
+* Só o autor exclui o próprio comentário; comentário de outra pessoa responde 404. Comentários são excluídos junto com a tarefa.
+* No frontend ficam na seção "Atividade" do detalhe da tarefa, em uma única linha do tempo com o histórico de alterações (como a aba "Tudo" do Jira). Ctrl+Enter envia; Esc limpa o rascunho sem fechar o modal. O texto é renderizado como texto puro (sem HTML), preservando quebras de linha.
 * [ ] Kubernetes
 * [ ] Rancher
 * [ ] Horizontal Scaling
