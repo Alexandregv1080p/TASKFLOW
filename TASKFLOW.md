@@ -1609,6 +1609,14 @@ Não utilizar MongoDB no MVP apenas para marcar presença na stack.
 
 Caso implementado, utilizar para eventos de auditoria.
 
+> **Decisão (Fase 13): a auditoria das tarefas foi implementada no PostgreSQL**, na tabela `TaskEvents`, sem MongoDB.
+>
+> * **Motivo:** o evento é gravado no mesmo `SaveChanges` (mesma transação) da alteração. Ou os dois são gravados, ou nenhum: nunca existe mudança sem registro nem registro sem mudança. Com um segundo banco isso exigiria um mecanismo de consistência (outbox ou similar) que o volume atual não justifica.
+> * **O que registra:** `Created`, `TitleChanged`, `DescriptionChanged`, `PriorityChanged`, `DueDateChanged`, `StatusChanged`, `AssigneeChanged`, com valor antigo, valor novo, autor e data. Só gera evento quando o valor realmente muda. A descrição registra apenas que mudou (o texto pode ser longo e o atual já está na tarefa).
+> * **Onde aparece:** `GET /api/tasks/{id}/history` (mais recente primeiro, restrito ao dono do projeto) e a seção "Atividade" no detalhe da tarefa.
+> * **Ciclo de vida:** o histórico pertence à tarefa e é excluído com ela; a exclusão em si fica nos logs estruturados. Se o autor for removido, o evento permanece sem autor.
+> * **Quando o MongoDB passaria a fazer sentido:** auditoria de alto volume e formato variável (eventos de vários módulos, payloads livres) que não precise de consistência transacional com os dados principais. Login e operações de projeto hoje ficam nos logs estruturados (Fase 12).
+
 Exemplo:
 
 ```json
@@ -2058,8 +2066,8 @@ Decisões:
 
 # Fase 13 — Evolução
 
-* [ ] MongoDB
-* [ ] Audit Events
+* [ ] MongoDB (não adotado por ora; ver decisão na seção 52)
+* [x] Audit Events (histórico de alterações da tarefa no PostgreSQL, seção 52)
 * [ ] Kubernetes
 * [ ] Rancher
 * [ ] Horizontal Scaling
@@ -2425,7 +2433,7 @@ Ao implementar este projeto:
 ## Advanced
 
 * [ ] MongoDB
-* [ ] Audit Events
+* [x] Audit Events
 * [ ] Kubernetes
 * [ ] Rancher
 * [ ] Horizontal Scaling

@@ -5,6 +5,7 @@ import type {
   ProjectInput,
   ProjectSummary,
   Task,
+  TaskEvent,
   TaskInput,
   TaskStatus,
   User,
@@ -110,6 +111,7 @@ export const api = {
 
   listTasks: (projectId: string) => request<Task[]>(`/projects/${projectId}/tasks`),
   createTask: (projectId: string, input: TaskInput) => request<Task>(`/projects/${projectId}/tasks`, 'POST', input),
+  taskHistory: (id: string) => request<TaskEvent[]>(`/tasks/${id}/history`),
   updateTask: (id: string, input: TaskInput) => request<Task>(`/tasks/${id}`, 'PUT', input),
   changeTaskStatus: (id: string, status: TaskStatus) => request<Task>(`/tasks/${id}/status`, 'PATCH', { status }),
   assignTask: (id: string, userId: string | null) => request<Task>(`/tasks/${id}/assignee`, 'PATCH', { userId }),

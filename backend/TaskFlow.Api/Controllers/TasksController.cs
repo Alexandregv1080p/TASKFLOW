@@ -23,6 +23,9 @@ public class TasksController(TaskService tasks) : ControllerBase
     [HttpGet("tasks/{id:guid}")]
     public Task<TaskResponse> Get(Guid id, CancellationToken ct) => tasks.GetAsync(id, ct);
 
+    [HttpGet("tasks/{id:guid}/history")]
+    public Task<IReadOnlyList<TaskEventResponse>> History(Guid id, CancellationToken ct) => tasks.HistoryAsync(id, ct);
+
     [HttpPut("tasks/{id:guid}")]
     public Task<TaskResponse> Update(Guid id, UpdateTaskRequest request, CancellationToken ct) =>
         tasks.UpdateAsync(id, request, ct);

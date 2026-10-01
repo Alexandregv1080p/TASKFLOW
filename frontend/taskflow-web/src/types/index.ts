@@ -52,6 +52,25 @@ export interface Task {
   createdAt: string
 }
 
+export type TaskEventType =
+  | 'Created'
+  | 'TitleChanged'
+  | 'DescriptionChanged'
+  | 'PriorityChanged'
+  | 'DueDateChanged'
+  | 'StatusChanged'
+  | 'AssigneeChanged'
+
+// oldValue/newValue: nome de enum (status, prioridade), data yyyy-MM-dd, id do usuário (responsável) ou texto (título).
+export interface TaskEvent {
+  id: string
+  type: TaskEventType
+  oldValue: string | null
+  newValue: string | null
+  userId: string | null
+  createdAt: string
+}
+
 export interface Dashboard {
   totalProjects: number
   totalTasks: number

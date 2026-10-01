@@ -16,6 +16,7 @@ import type { Task, TaskInput, TaskPriority, TaskStatus } from '../types'
 import { PRIORITY_LABEL, STATUSES, STATUS_LABEL, formatDateTime } from '../utils/format'
 import { Avatar } from './Avatar'
 import { PriorityIcon } from './PriorityIcon'
+import { TaskActivity } from './TaskActivity'
 
 // Detalhe da tarefa em modal, no layout do Jira: conteúdo à esquerda, status e detalhes à direita.
 export function TaskDetail() {
@@ -27,7 +28,9 @@ export function TaskDetail() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string>()
   const [copied, setCopied] = useState(false)
-  const task = tasks.find((t) => t.id === taskId)
+  // Incrementado a cada alteração salva: recarrega a seção Atividade.
+  const [version, setVersion] = useState(0)
+  const task =tasks.find((t) => t.id === taskId)
 
   const close = () => navigate(`/projects/${project.id}`)
 
@@ -43,6 +46,7 @@ export function TaskDetail() {
     setError(undefined)
     try {
       replaceTask(await action())
+      setVersion((v) => v + 1)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar.')
     } finally {
@@ -144,6 +148,11 @@ export function TaskDetail() {
               <section className="task-detail__section">
                 <h3>Descrição</h3>
                 <EditableDescription value={task.description} onSave={(description) => update(task, { description })} />
+              </section>
+
+              <section className="task-detail__section">
+                <h3>Atividade</h3>
+                <TaskActivity taskId={task.id} version={version} users={users} />
               </section>
             </div>
 

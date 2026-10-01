@@ -1441,6 +1441,62 @@ textarea {
   cursor: pointer;
 }
 
+/* Atividade (histórico da tarefa) */
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity__item {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.activity__text {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.activity__text strong {
+  font-weight: 600;
+}
+
+.activity__value {
+  font-weight: 550;
+}
+
+.activity__value--old {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.activity__arrow {
+  margin: 0 0.3rem;
+  color: var(--muted);
+  vertical-align: -1px;
+}
+
+.activity__time {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.activity__error {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.skeleton--activity {
+  height: 44px;
+  border-radius: var(--radius-control);
+}
+
 .task-detail__created {
   font-size: 0.78rem;
   color: var(--muted);

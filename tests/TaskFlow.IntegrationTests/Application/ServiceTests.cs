@@ -103,6 +103,63 @@ public class ServiceTests(DatabaseFixture db)
     }
 
     [Fact]
+    public async Task Historico_registra_cada_alteracao_com_valores_e_autor()
+    {
+        var user = await SeedUserAsync();
+
+        await using var context = db.CreateContext();
+        var project = await Projects(context, user).CreateAsync(new CreateProjectRequest("Website", null));
+        var service = Tasks(context, user);
+        var task = await service.CreateAsync(project.Id, new CreateTaskRequest("Login", null, TaskPriority.Low, null));
+
+        await service.UpdateAsync(task.Id, new UpdateTaskRequest("Login JWT", "Detalhes", TaskPriority.High, new DateTime(2026, 10, 5)));
+        await service.ChangeStatusAsync(task.Id, new ChangeTaskStatusRequest(TaskItemStatus.InProgress));
+        await service.AssignAsync(task.Id, new AssignTaskRequest(user.UserId));
+
+        var history = await service.HistoryAsync(task.Id);
+
+        Assert.All(history, e => Assert.Equal(user.UserId, e.UserId));
+        Assert.Equal(
+            [
+                TaskEventType.Created, TaskEventType.TitleChanged, TaskEventType.DescriptionChanged,
+                TaskEventType.PriorityChanged, TaskEventType.DueDateChanged, TaskEventType.StatusChanged,
+                TaskEventType.AssigneeChanged
+            ],
+            history.Select(e => e.Type).Order());
+
+        var title = history.Single(e => e.Type == TaskEventType.TitleChanged);
+        Assert.Equal(("Login", "Login JWT"), (title.OldValue, title.NewValue));
+
+        var status = history.Single(e => e.Type == TaskEventType.StatusChanged);
+        Assert.Equal(("Todo", "InProgress"), (status.OldValue, status.NewValue));
+
+        var dueDate = history.Single(e => e.Type == TaskEventType.DueDateChanged);
+        Assert.Equal((null, "2026-10-05"), (dueDate.OldValue, dueDate.NewValue));
+
+        Assert.Equal(user.UserId.ToString(), history.Single(e => e.Type == TaskEventType.AssigneeChanged).NewValue);
+    }
+
+    [Fact]
+    public async Task Historico_nao_registra_quando_nada_muda_e_e_restrito_ao_dono()
+    {
+        var owner = await SeedUserAsync();
+        var intruder = await SeedUserAsync();
+
+        await using var context = db.CreateContext();
+        var project = await Projects(context, owner).CreateAsync(new CreateProjectRequest("Website", null));
+        var service = Tasks(context, owner);
+        var task = await service.CreateAsync(project.Id, new CreateTaskRequest("Login", null, TaskPriority.Low, null));
+
+        // Mesmos valores, mesmo status e continuar sem responsável: nenhum evento novo.
+        await service.UpdateAsync(task.Id, new UpdateTaskRequest("  Login  ", null, TaskPriority.Low, null));
+        await service.ChangeStatusAsync(task.Id, new ChangeTaskStatusRequest(TaskItemStatus.Todo));
+        await service.AssignAsync(task.Id, new AssignTaskRequest(null));
+
+        Assert.Equal(TaskEventType.Created, Assert.Single(await service.HistoryAsync(task.Id)).Type);
+        await Assert.ThrowsAsync<NotFoundException>(() => Tasks(context, intruder).HistoryAsync(task.Id));
+    }
+
+    [Fact]
     public async Task Tarefas_recebem_numero_sequencial_por_projeto()
     {
         var user = await SeedUserAsync();

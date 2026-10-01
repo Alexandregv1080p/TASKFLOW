@@ -91,6 +91,27 @@ public class ApiTests(DatabaseFixture db) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Historico_da_tarefa_pela_api()
+    {
+        var projectId = (await CreateProjectAsync()).GetProperty("id").GetString();
+        var task = await (await _client.PostAsJsonAsync($"/api/projects/{projectId}/tasks",
+            new { title = "Login", priority = "Low" })).Content.ReadFromJsonAsync<JsonElement>();
+        var taskId = task.GetProperty("id").GetString();
+        await _client.PatchAsJsonAsync($"/api/tasks/{taskId}/status", new { status = "InProgress" });
+
+        var history = await _client.GetFromJsonAsync<JsonElement>($"/api/tasks/{taskId}/history");
+
+        // Mais recente primeiro, com o tipo como texto.
+        Assert.Equal(2, history.GetArrayLength());
+        Assert.Equal("StatusChanged", history[0].GetProperty("type").GetString());
+        Assert.Equal("InProgress", history[0].GetProperty("newValue").GetString());
+        Assert.Equal("Created", history[1].GetProperty("type").GetString());
+
+        var other = await db.CreateAuthenticatedClientAsync("Outro");
+        await AssertErrorAsync(await other.GetAsync($"/api/tasks/{taskId}/history"), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Regra_de_dominio_violada_retorna_400()
     {
         var projectId = (await CreateProjectAsync()).GetProperty("id").GetString();

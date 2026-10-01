@@ -12,6 +12,9 @@ public record ChangeTaskStatusRequest(TaskItemStatus Status);
 // UserId nulo remove o responsável.
 public record AssignTaskRequest(Guid? UserId);
 
+// OldValue/NewValue: nomes de enum (status, prioridade), data yyyy-MM-dd, id do usuário (responsável) ou texto (título).
+public record TaskEventResponse(Guid Id, TaskEventType Type, string? OldValue, string? NewValue, Guid? UserId, DateTime CreatedAt);
+
 public record TaskResponse(
     Guid Id,
     Guid ProjectId,

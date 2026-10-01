@@ -21,6 +21,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
             projectId, number, currentUser.UserId, request.Title, request.Description, request.Priority, request.DueDate);
 
         db.Tasks.Add(task);
+        Record(task, TaskEventType.Created);
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("TaskCreated {TaskId} {ProjectId} {UserId}", task.Id, projectId, currentUser.UserId);
@@ -47,12 +48,35 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
     public async Task<TaskResponse> UpdateAsync(Guid id, UpdateTaskRequest request, CancellationToken ct = default)
     {
         var task = await FindAsync(id, ct);
+        var (title, description, priority, dueDate) = (task.Title, task.Description, task.Priority, task.DueDate);
 
         task.Update(request.Title, request.Description, request.DueDate);
         task.ChangePriority(request.Priority);
+
+        // Um evento por campo que realmente mudou (comparando o valor já normalizado pelo domínio).
+        if (task.Title != title)
+            Record(task, TaskEventType.TitleChanged, title, task.Title);
+        if (task.Description != description)
+            Record(task, TaskEventType.DescriptionChanged); // sem o texto: pode ser longo e o atual já está na tarefa
+        if (task.Priority != priority)
+            Record(task, TaskEventType.PriorityChanged, priority.ToString(), task.Priority.ToString());
+        if (task.DueDate?.Date != dueDate?.Date)
+            Record(task, TaskEventType.DueDateChanged, FormatDate(dueDate), FormatDate(task.DueDate));
+
         await db.SaveChangesAsync(ct);
 
         return TaskResponse.From(task);
+    }
+
+    public async Task<IReadOnlyList<TaskEventResponse>> HistoryAsync(Guid id, CancellationToken ct = default)
+    {
+        var task = await FindAsync(id, ct);
+
+        return await db.TaskEvents.AsNoTracking()
+            .Where(e => e.TaskId == task.Id)
+            .OrderByDescending(e => e.CreatedAt)
+            .Select(e => new TaskEventResponse(e.Id, e.Type, e.OldValue, e.NewValue, e.UserId, e.CreatedAt))
+            .ToListAsync(ct);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -67,6 +91,10 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         var oldStatus = task.Status;
 
         task.ChangeStatus(request.Status);
+
+        if (oldStatus != task.Status)
+            Record(task, TaskEventType.StatusChanged, oldStatus.ToString(), task.Status.ToString());
+
         await db.SaveChangesAsync(ct);
 
         if (oldStatus != task.Status)
@@ -84,6 +112,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
     public async Task<TaskResponse> AssignAsync(Guid id, AssignTaskRequest request, CancellationToken ct = default)
     {
         var task = await FindAsync(id, ct);
+        var oldAssignee = task.AssignedToId;
 
         if (request.UserId is not { } userId)
         {
@@ -97,10 +126,19 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
             task.AssignTo(userId);
         }
 
+        if (task.AssignedToId != oldAssignee)
+            Record(task, TaskEventType.AssigneeChanged, oldAssignee?.ToString(), task.AssignedToId?.ToString());
+
         await db.SaveChangesAsync(ct);
 
         return TaskResponse.From(task);
     }
+
+    // O evento entra no mesmo SaveChanges da alteração: ou os dois são gravados, ou nenhum.
+    private void Record(TaskItem task, TaskEventType type, string? oldValue = null, string? newValue = null) =>
+        db.TaskEvents.Add(new TaskEvent(task.Id, currentUser.UserId, type, oldValue, newValue));
+
+    private static string? FormatDate(DateTime? date) => date?.ToString("yyyy-MM-dd");
 
     private IQueryable<TaskItem> Accessible() =>
         db.Tasks.Where(t => db.Projects.Any(p => p.Id == t.ProjectId && p.OwnerId == currentUser.UserId));
