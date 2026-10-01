@@ -10,11 +10,14 @@ interface Props {
   taskKey: string
   assignee?: UserSummary
   busy: boolean
+  dragging: boolean
+  onDragStart: () => void
+  onDragEnd: () => void
   onMove: (task: Task, status: TaskStatus) => void
   onDelete: (task: Task) => void
 }
 
-export function TaskCard({ task, taskKey, assignee, busy, onMove, onDelete }: Props) {
+export function TaskCard({ task, taskKey, assignee, busy, dragging, onDragStart, onDragEnd, onMove, onDelete }: Props) {
   // O domínio só permite andar uma coluna por vez; os botões refletem isso.
   const index = STATUSES.indexOf(task.status)
   const previous = STATUSES[index - 1]
@@ -22,10 +25,22 @@ export function TaskCard({ task, taskKey, assignee, busy, onMove, onDelete }: Pr
   const overdue = isOverdue(task.dueDate, task.status)
 
   return (
-    <article className="task-card" aria-busy={busy}>
+    <article
+      className="task-card"
+      aria-busy={busy}
+      data-dragging={dragging || undefined}
+      draggable={!busy}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('text/plain', task.title)
+        onDragStart()
+      }}
+      onDragEnd={onDragEnd}
+    >
       {/* O link do título cobre o card inteiro (::after); os botões ficam acima dele. */}
+      {/* draggable={false}: sem isso o navegador arrastaria o link (a URL), e não o card. */}
       <h3 className="task-card__title">
-        <Link to={`tasks/${task.id}`} className="task-card__link">
+        <Link to={`tasks/${task.id}`} className="task-card__link" draggable={false}>
           {task.title}
         </Link>
       </h3>

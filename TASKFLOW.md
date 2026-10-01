@@ -1203,6 +1203,8 @@ O MVP pode utilizar alteração de status através de botões.
 
 Drag-and-drop é uma evolução opcional.
 
+Implementado: arrastar e soltar nativo (HTML5, sem biblioteca). Ao arrastar um card, só as colunas vizinhas (movimento permitido pelo domínio) viram destino e ficam destacadas; as demais ficam apagadas e recusam o card. Os botões de seta continuam no card: são o caminho pelo teclado e em telas de toque, onde o drag-and-drop nativo não dispara.
+
 ---
 
 # 38. Comunicação frontend/backend

@@ -1061,6 +1061,42 @@ textarea {
   color: var(--low);
 }
 
+/* Arrastar e soltar: só as colunas vizinhas (movimento permitido) aceitam o card. */
+
+.task-card[draggable='true'] {
+  cursor: grab;
+}
+
+.task-card[draggable='true']:active {
+  cursor: grabbing;
+}
+
+.task-card[data-dragging] {
+  opacity: 0.4;
+}
+
+.kanban__column {
+  outline: 2px dashed transparent;
+  outline-offset: -2px;
+  transition:
+    background-color 150ms ease,
+    outline-color 150ms ease,
+    opacity 150ms ease;
+}
+
+.kanban__column[data-drop='target'] {
+  outline-color: var(--border-strong);
+}
+
+.kanban__column[data-drop='target'][data-over] {
+  outline-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.kanban__column[data-drop='blocked'] {
+  opacity: 0.5;
+}
+
 /* Login e cadastro */
 
 .auth {
