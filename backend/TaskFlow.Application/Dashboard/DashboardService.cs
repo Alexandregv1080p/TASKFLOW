@@ -22,8 +22,8 @@ public class DashboardService(ITaskFlowDbContext db, ProjectService projects, IC
 
     public async Task<DashboardResponse> GetAsync(CancellationToken ct = default)
     {
-        // Projetos próprios e compartilhados comigo.
-        var accessible = db.AccessibleProjects(currentUser.UserId);
+        // Projetos ativos, próprios e compartilhados comigo (arquivados ficam fora dos números).
+        var accessible = db.AccessibleProjects(currentUser.UserId).Where(p => p.ArchivedAt == null);
         var tasks = db.Tasks.Where(t => accessible.Any(p => p.Id == t.ProjectId));
 
         var byStatus = await tasks
@@ -47,6 +47,6 @@ public class DashboardService(ITaskFlowDbContext db, ProjectService projects, IC
                 byPriority.GetValueOrDefault(TaskPriority.Low),
                 byPriority.GetValueOrDefault(TaskPriority.Medium),
                 byPriority.GetValueOrDefault(TaskPriority.High)),
-            await projects.ListAsync(RecentProjectsLimit, ct));
+            await projects.ListAsync(limit: RecentProjectsLimit, ct: ct));
     }
 }

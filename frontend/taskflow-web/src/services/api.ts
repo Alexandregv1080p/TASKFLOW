@@ -1,9 +1,13 @@
 import type {
   AuthResponse,
   Dashboard,
+  ForYouFilter,
+  ForYouResponse,
   Project,
   ProjectInput,
   ProjectMember,
+  ProjectScope,
+  ProjectStatus,
   ProjectSummary,
   Task,
   TaskComment,
@@ -106,12 +110,21 @@ export const api = {
   removeMember: (projectId: string, userId: string) => request<void>(`/projects/${projectId}/members/${userId}`, 'DELETE'),
 
   getDashboard: () => request<Dashboard>('/dashboard'),
+  getForYou: (filter: ForYouFilter) => request<ForYouResponse>(`/for-you?filter=${filter}`),
 
-  listProjects: () => request<ProjectSummary[]>('/projects'),
+  // Diretório de projetos: aba (escopo) e busca por nome.
+  listProjects: (scope: ProjectScope = 'All', search = '') =>
+    request<ProjectSummary[]>(`/projects?${new URLSearchParams({ scope, ...(search.trim() && { search: search.trim() }) })}`),
   getProject: (id: string) => request<Project>(`/projects/${id}`),
   createProject: (input: ProjectInput) => request<Project>('/projects', 'POST', input),
   updateProject: (id: string, input: ProjectInput) => request<Project>(`/projects/${id}`, 'PUT', input),
+  changeProjectStatus: (id: string, status: ProjectStatus) => request<Project>(`/projects/${id}/status`, 'PATCH', { status }),
+  archiveProject: (id: string) => request<Project>(`/projects/${id}/archive`, 'POST'),
+  restoreProject: (id: string) => request<Project>(`/projects/${id}/restore`, 'POST'),
   deleteProject: (id: string) => request<void>(`/projects/${id}`, 'DELETE'),
+
+  setTaskStar: (id: string, starred: boolean) => request<Task>(`/tasks/${id}/star`, starred ? 'PUT' : 'DELETE'),
+  markTaskViewed: (id: string) => request<void>(`/tasks/${id}/view`, 'POST'),
 
   listTasks: (projectId: string) => request<Task[]>(`/projects/${projectId}/tasks`),
   createTask: (projectId: string, input: TaskInput) => request<Task>(`/projects/${projectId}/tasks`, 'POST', input),

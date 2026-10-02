@@ -33,9 +33,11 @@ public record TaskResponse(
     DateTime? DueDate,
     Guid? AssignedToId,
     Guid? CreatedById,
-    DateTime CreatedAt)
+    DateTime CreatedAt,
+    // Se o usuário atual marcou a tarefa com estrela.
+    bool Starred)
 {
-    public static TaskResponse From(TaskItem t) =>
+    public static TaskResponse From(TaskItem t, bool starred) =>
         new(t.Id, t.ProjectId, t.Number, t.Title, t.Description, t.Status, t.Priority, t.DueDate,
-            t.AssignedToId, t.CreatedById, t.CreatedAt);
+            t.AssignedToId, t.CreatedById, t.CreatedAt, starred);
 }

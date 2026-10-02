@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ArrowRightIcon, CalendarBlankIcon, TrashIcon, WarningIcon } from '@phosphor-icons/react'
+import { ArrowLeftIcon, ArrowRightIcon, CalendarBlankIcon, StarIcon, TrashIcon, WarningIcon } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import type { Task, TaskStatus, UserSummary } from '../types'
 import { PRIORITY_LABEL, STATUSES, STATUS_LABEL, formatDate, isOverdue } from '../utils/format'
@@ -10,6 +10,7 @@ interface Props {
   taskKey: string
   assignee?: UserSummary
   busy: boolean
+  readOnly: boolean
   dragging: boolean
   onDragStart: () => void
   onDragEnd: () => void
@@ -17,11 +18,12 @@ interface Props {
   onDelete: (task: Task) => void
 }
 
-export function TaskCard({ task, taskKey, assignee, busy, dragging, onDragStart, onDragEnd, onMove, onDelete }: Props) {
+export function TaskCard({ task, taskKey, assignee, busy, readOnly, dragging, onDragStart, onDragEnd, onMove, onDelete }: Props) {
   // O domínio só permite andar uma coluna por vez; os botões refletem isso.
+  // Em projeto arquivado (somente leitura) não há para onde mover.
   const index = STATUSES.indexOf(task.status)
-  const previous = STATUSES[index - 1]
-  const next = STATUSES[index + 1]
+  const previous = readOnly ? undefined : STATUSES[index - 1]
+  const next = readOnly ? undefined : STATUSES[index + 1]
   const overdue = isOverdue(task.dueDate, task.status)
 
   return (
@@ -29,7 +31,7 @@ export function TaskCard({ task, taskKey, assignee, busy, dragging, onDragStart,
       className="task-card"
       aria-busy={busy}
       data-dragging={dragging || undefined}
-      draggable={!busy}
+      draggable={!busy && !readOnly}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', task.title)
@@ -64,6 +66,12 @@ export function TaskCard({ task, taskKey, assignee, busy, dragging, onDragStart,
         <span className="task-card__key" title={`Prioridade ${PRIORITY_LABEL[task.priority]}`}>
           <PriorityIcon priority={task.priority} size={14} />
           {taskKey}
+          {task.starred && (
+            <>
+              <StarIcon size={13} weight="fill" className="task-card__star" aria-hidden="true" />
+              <span className="sr-only"> (com estrela)</span>
+            </>
+          )}
         </span>
 
         <div className="task-card__actions">
@@ -89,15 +97,17 @@ export function TaskCard({ task, taskKey, assignee, busy, dragging, onDragStart,
               <ArrowRightIcon size={15} weight="bold" />
             </button>
           )}
-          <button
-            className="icon-btn icon-btn--danger"
-            disabled={busy}
-            onClick={() => onDelete(task)}
-            aria-label={`Excluir tarefa ${task.title}`}
-            title="Excluir tarefa"
-          >
-            <TrashIcon size={15} />
-          </button>
+          {!readOnly && (
+            <button
+              className="icon-btn icon-btn--danger"
+              disabled={busy}
+              onClick={() => onDelete(task)}
+              aria-label={`Excluir tarefa ${task.title}`}
+              title="Excluir tarefa"
+            >
+              <TrashIcon size={15} />
+            </button>
+          )}
         </div>
 
         {assignee ? (

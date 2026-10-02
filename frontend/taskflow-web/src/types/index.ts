@@ -31,17 +31,54 @@ export interface Project {
   name: string
   description: string | null
   ownerId: string
+  status: ProjectStatus
+  statusUpdatedAt: string
+  // Preenchido quando o projeto está arquivado (somente leitura).
+  archivedAt: string | null
   createdAt: string
 }
+
+export type ProjectStatus = 'OnTrack' | 'AtRisk' | 'OffTrack' | 'Paused' | 'Completed'
+
+// Abas do diretório de projetos.
+export type ProjectScope = 'All' | 'Mine' | 'Archived'
 
 export interface ProjectSummary {
   id: string
   name: string
   description: string | null
   ownerId: string
+  ownerName: string
+  status: ProjectStatus
+  statusUpdatedAt: string
+  archived: boolean
   createdAt: string
   taskCount: number
   doneCount: number
+}
+
+// Abas da página "Para você".
+export type ForYouFilter = 'Recommended' | 'Assigned' | 'Starred' | 'Worked' | 'Viewed'
+
+export interface ForYouItem {
+  taskId: string
+  projectId: string
+  projectName: string
+  number: number
+  title: string
+  status: TaskStatus
+  priority: TaskPriority
+  assignedToId: string | null
+  assigneeName: string | null
+  starred: boolean
+  // Momento que colocou a tarefa na aba (última atividade, quando marquei, quando abri...).
+  date: string
+}
+
+export interface ForYouResponse {
+  recommendedProjects: ProjectSummary[]
+  assignedCount: number
+  items: ForYouItem[]
 }
 
 export interface Task {
@@ -56,6 +93,8 @@ export interface Task {
   assignedToId: string | null
   createdById: string | null
   createdAt: string
+  // Se eu marquei a tarefa com estrela.
+  starred: boolean
 }
 
 export type TaskEventType =

@@ -1,4 +1,4 @@
-import type { TaskPriority, TaskStatus } from '../types'
+import type { ProjectStatus, TaskPriority, TaskStatus } from '../types'
 
 export const STATUSES: TaskStatus[] = ['Todo', 'InProgress', 'Done']
 
@@ -12,6 +12,47 @@ export const PRIORITY_LABEL: Record<TaskPriority, string> = {
   Low: 'Baixa',
   Medium: 'Média',
   High: 'Alta',
+}
+
+export const PROJECT_STATUSES: ProjectStatus[] = ['OnTrack', 'AtRisk', 'OffTrack', 'Paused', 'Completed']
+
+export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
+  OnTrack: 'No prazo',
+  AtRisk: 'Em risco',
+  OffTrack: 'Atrasado',
+  Paused: 'Pausado',
+  Completed: 'Concluído',
+}
+
+// Dias de calendário (fuso local) entre a data e hoje: 0 = hoje, 1 = ontem...
+function daysAgo(value: string): number {
+  const date = new Date(value)
+  const today = new Date()
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+
+  return Math.round((startOf(today) - startOf(date)) / 86_400_000)
+}
+
+// Grupo de data da lista "Para você".
+export function dateGroup(value: string): string {
+  const days = daysAgo(value)
+
+  if (days <= 0) return 'Hoje'
+  if (days === 1) return 'Ontem'
+  if (days < 7) return 'Nesta semana'
+  if (days <= 30) return 'No último mês'
+  return 'Há mais de um mês'
+}
+
+const relativeFormat = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' })
+
+// "hoje", "ontem", "há 5 dias", "há 2 meses".
+export function formatRelativeDay(value: string): string {
+  const days = daysAgo(value)
+
+  if (days < 31) return relativeFormat.format(-Math.max(days, 0), 'day')
+  if (days < 365) return relativeFormat.format(-Math.floor(days / 30), 'month')
+  return relativeFormat.format(-Math.floor(days / 365), 'year')
 }
 
 // Chave curta do projeto para montar a chave da tarefa (ex.: "Website" -> WEB, "Mobile App" -> MA).

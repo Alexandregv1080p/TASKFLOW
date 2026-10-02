@@ -18,6 +18,10 @@ public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : Db
 
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
 
+    public DbSet<TaskStar> TaskStars => Set<TaskStar>();
+
+    public DbSet<TaskView> TaskViews => Set<TaskView>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(TaskFlowDbContext).Assembly);
 }

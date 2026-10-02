@@ -27,6 +27,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -41,6 +44,14 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("StatusUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -185,6 +196,42 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Tasks", (string)null);
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskStar", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "TaskId");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("TaskStars", (string)null);
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskView", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ViewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "TaskId");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("TaskViews", (string)null);
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -282,6 +329,36 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.HasOne("TaskFlow.Domain.Entities.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskStar", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskView", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

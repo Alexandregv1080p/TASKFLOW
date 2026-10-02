@@ -12,12 +12,14 @@ interface Props {
   version: number
   users: UserSummary[]
   currentUserId: string | undefined
+  // Projeto arquivado: sem comentar nem excluir comentário.
+  readOnly: boolean
 }
 
 type Entry = { kind: 'comment'; at: string; comment: TaskComment } | { kind: 'event'; at: string; event: TaskEvent }
 
 // Comentários e alterações em uma única linha do tempo, do mais recente para o mais antigo.
-export function TaskActivity({ taskId, version, users, currentUserId }: Props) {
+export function TaskActivity({ taskId, version, users, currentUserId, readOnly }: Props) {
   const { data, error, reload, setData } = useAsync(
     () => Promise.all([api.taskHistory(taskId), api.listComments(taskId)]),
     [taskId, version],
@@ -61,7 +63,7 @@ export function TaskActivity({ taskId, version, users, currentUserId }: Props) {
 
   return (
     <>
-      <CommentComposer currentUserName={nameOf(currentUserId ?? null)} onSubmit={addComment} />
+      {!readOnly && <CommentComposer currentUserName={nameOf(currentUserId ?? null)} onSubmit={addComment} />}
 
       {actionError && (
         <p className="field__error" role="alert">
@@ -96,7 +98,7 @@ export function TaskActivity({ taskId, version, users, currentUserId }: Props) {
 
                   <div className="activity__meta">
                     <time dateTime={entry.at}>{formatDateTime(entry.at)}</time>
-                    {entry.kind === 'comment' && entry.comment.authorId === currentUserId && (
+                    {!readOnly && entry.kind === 'comment' && entry.comment.authorId === currentUserId && (
                       <button
                         className="icon-btn icon-btn--danger icon-btn--xs"
                         onClick={() => deleteComment(entry.comment)}

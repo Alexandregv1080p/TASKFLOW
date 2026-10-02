@@ -4,6 +4,7 @@ import {
   CheckSquareIcon,
   FolderSimpleIcon,
   LinkSimpleIcon,
+  StarIcon,
   TrashIcon,
   XIcon,
 } from '@phosphor-icons/react'
@@ -23,16 +24,24 @@ export function TaskDetail() {
   const { taskId = '' } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { project, tasks, users, keyPrefix, replaceTask, removeTask } = useOutletContext<ProjectOutletContext>()
+  const { project, tasks, users, keyPrefix, readOnly, replaceTask, removeTask } = useOutletContext<ProjectOutletContext>()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [saving, setSaving] = useState(false)
+  // Campos travados enquanto salva ou quando o projeto está arquivado.
+  const locked = saving || readOnly
   const [error, setError] = useState<string>()
   const [copied, setCopied] = useState(false)
   // Incrementado a cada alteração salva: recarrega a seção Atividade.
   const [version, setVersion] = useState(0)
-  const task =tasks.find((t) => t.id === taskId)
+  const task = tasks.find((t) => t.id === taskId)
+  const exists = task !== undefined
 
   const close = () => navigate(`/projects/${project.id}`)
+
+  // Abrir a tarefa registra a visualização (aba "Visto" da página Para você). Falhar aqui não atrapalha nada.
+  useEffect(() => {
+    if (exists) api.markTaskViewed(taskId).catch(() => {})
+  }, [taskId, exists])
 
   // <dialog> nativo: foco preso no modal e o resto da página fica inerte.
   // Fechar é sempre navegar de volta ao quadro (a rota desmonta o modal).
@@ -63,6 +72,16 @@ export function TaskDetail() {
       ...changes,
     }
     return save(() => api.updateTask(current.id, input))
+  }
+
+  // Estrela é pessoal: não entra no histórico da tarefa nem depende do projeto estar ativo.
+  async function toggleStar(current: Task) {
+    setError(undefined)
+    try {
+      replaceTask(await api.setTaskStar(current.id, !current.starred))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao marcar a tarefa.')
+    }
   }
 
   async function copyLink() {
@@ -118,10 +137,21 @@ export function TaskDetail() {
           </nav>
 
           <div className="task-detail__tools">
+            {task && (
+              <button
+                className={task.starred ? 'tool-btn tool-btn--starred' : 'tool-btn'}
+                onClick={() => toggleStar(task)}
+                aria-pressed={task.starred}
+                aria-label={task.starred ? 'Remover estrela' : 'Marcar com estrela'}
+                title={task.starred ? 'Remover estrela' : 'Marcar com estrela'}
+              >
+                <StarIcon size={17} weight={task.starred ? 'fill' : 'regular'} />
+              </button>
+            )}
             <button className="tool-btn" onClick={copyLink} aria-label="Copiar link" title={copied ? 'Link copiado' : 'Copiar link'}>
               {copied ? <CheckIcon size={17} weight="bold" /> : <LinkSimpleIcon size={17} />}
             </button>
-            {task && (
+            {task && !readOnly && (
               <button className="tool-btn tool-btn--danger" onClick={() => remove(task)} aria-label="Excluir tarefa" title="Excluir tarefa">
                 <TrashIcon size={17} />
               </button>
@@ -137,7 +167,11 @@ export function TaskDetail() {
         ) : (
           <div className="task-detail__body">
             <div className="task-detail__main">
-              <EditableTitle value={task.title} onSave={(title) => update(task, { title })} />
+              {readOnly ? (
+                <h2 className="task-detail__title">{task.title}</h2>
+              ) : (
+                <EditableTitle value={task.title} onSave={(title) => update(task, { title })} />
+              )}
 
               {error && (
                 <p className="field__error" role="alert">
@@ -147,19 +181,23 @@ export function TaskDetail() {
 
               <section className="task-detail__section">
                 <h3>Descrição</h3>
-                <EditableDescription value={task.description} onSave={(description) => update(task, { description })} />
+                {readOnly ? (
+                  <p className="task-detail__description">{task.description ?? 'Sem descrição.'}</p>
+                ) : (
+                  <EditableDescription value={task.description} onSave={(description) => update(task, { description })} />
+                )}
               </section>
 
               <section className="task-detail__section">
                 <h3>Atividade</h3>
-                <TaskActivity taskId={task.id} version={version} users={users} currentUserId={user?.id} />
+                <TaskActivity taskId={task.id} version={version} users={users} currentUserId={user?.id} readOnly={readOnly} />
               </section>
             </div>
 
             <aside className="task-detail__side" aria-busy={saving}>
               <StatusSelect
                 status={task.status}
-                disabled={saving}
+                disabled={locked}
                 onChange={(status) => save(() => api.changeTaskStatus(task.id, status))}
               />
 
@@ -182,7 +220,7 @@ export function TaskDetail() {
                         className="inline-select"
                         aria-label="Responsável"
                         value={task.assignedToId ?? ''}
-                        disabled={saving}
+                        disabled={locked}
                         onChange={(e) => save(() => api.assignTask(task.id, e.target.value || null))}
                       >
                         <option value="">Sem responsável</option>
@@ -193,10 +231,10 @@ export function TaskDetail() {
                         ))}
                       </select>
                     </div>
-                    {user && task.assignedToId !== user.id && (
+                    {user && !readOnly && task.assignedToId !== user.id && (
                       <button
                         className="link-btn"
-                        disabled={saving}
+                        disabled={locked}
                         onClick={() => save(() => api.assignTask(task.id, user.id))}
                       >
                         Atribuir a mim
@@ -220,7 +258,7 @@ export function TaskDetail() {
                         className="inline-select"
                         aria-label="Prioridade"
                         value={task.priority}
-                        disabled={saving}
+                        disabled={locked}
                         onChange={(e) => update(task, { priority: e.target.value as TaskPriority })}
                       >
                         {(['High', 'Medium', 'Low'] as TaskPriority[]).map((p) => (
@@ -239,7 +277,7 @@ export function TaskDetail() {
                       className="inline-input"
                       aria-label="Data limite"
                       value={task.dueDate?.slice(0, 10) ?? ''}
-                      disabled={saving}
+                      disabled={locked}
                       onChange={(e) => update(task, { dueDate: e.target.value || null })}
                     />
                   </dd>

@@ -4,6 +4,7 @@ import { TaskDetail } from './components/TaskDetail'
 import { MainLayout } from './layouts/MainLayout'
 import { AuthPage } from './pages/AuthPage'
 import { Dashboard } from './pages/Dashboard'
+import { ForYou } from './pages/ForYou'
 import { ProjectDetails } from './pages/ProjectDetails'
 import { Projects } from './pages/Projects'
 
@@ -22,7 +23,8 @@ export default function App() {
               </RequireAuth>
             }
           >
-            <Route index element={<Dashboard />} />
+            <Route index element={<ForYou />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="projects" element={<Projects />} />
             {/* O detalhe da tarefa abre em modal sobre o quadro, com URL própria (compartilhável). */}
             <Route path="projects/:id" element={<ProjectDetails />}>

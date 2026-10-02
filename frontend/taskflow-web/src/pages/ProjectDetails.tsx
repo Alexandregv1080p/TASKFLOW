@@ -1,16 +1,24 @@
-import { ArrowLeftIcon, PencilSimpleIcon, TrashIcon, UserPlusIcon } from '@phosphor-icons/react'
+import {
+  ArchiveIcon,
+  ArrowCounterClockwiseIcon,
+  ArrowLeftIcon,
+  PencilSimpleIcon,
+  TrashIcon,
+  UserPlusIcon,
+} from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { Avatar } from '../components/Avatar'
 import { ErrorMessage, Loading } from '../components/Feedback'
 import { KanbanBoard } from '../components/KanbanBoard'
+import { ProjectAvatar } from '../components/ProjectAvatar'
 import { ProjectForm } from '../components/ProjectForm'
 import { ProjectMembersDialog } from '../components/ProjectMembersDialog'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../services/api'
-import type { Project, ProjectInput, Task, TaskInput, TaskStatus, UserSummary } from '../types'
-import { projectKey } from '../utils/format'
+import type { Project, ProjectInput, ProjectStatus, Task, TaskInput, TaskStatus, UserSummary } from '../types'
+import { PROJECT_STATUSES, PROJECT_STATUS_LABEL, projectKey } from '../utils/format'
 
 // Compartilhado com o modal de detalhe da tarefa (rota filha).
 export interface ProjectOutletContext {
@@ -18,6 +26,8 @@ export interface ProjectOutletContext {
   tasks: Task[]
   users: UserSummary[]
   keyPrefix: string
+  // Projeto arquivado: nada pode ser alterado.
+  readOnly: boolean
   replaceTask: (task: Task) => void
   removeTask: (id: string) => void
 }
@@ -43,6 +53,7 @@ export function ProjectDetails() {
   const [project, tasks, users] = data
   // Só o dono edita/exclui o projeto e gerencia pessoas; a API aplica a mesma regra (403).
   const isOwner = project.ownerId === user?.id
+  const archived = project.archivedAt !== null
   const keyPrefix = projectKey(project.name)
   const done = tasks.filter((t) => t.status === 'Done').length
 
@@ -62,10 +73,20 @@ export function ProjectDetails() {
   }
 
   async function updateProject(input: ProjectInput) {
-    const updated = await api.updateProject(id, input)
-    setData(([, t, u]) => [updated, t, u])
+    setProject(await api.updateProject(id, input))
     setEditing(false)
   }
+
+  const setProject = (updated: Project) => setData(([, t, u]) => [updated, t, u])
+
+  const changeStatus = (status: ProjectStatus) => run(async () => setProject(await api.changeProjectStatus(id, status)))
+
+  function archiveProject() {
+    if (!window.confirm(`Arquivar "${project.name}"? Ele fica somente leitura e sai das listas, mas pode ser restaurado.`)) return
+    run(async () => setProject(await api.archiveProject(id)))
+  }
+
+  const restoreProject = () => run(async () => setProject(await api.restoreProject(id)))
 
   function deleteProject() {
     if (!window.confirm(`Excluir o projeto "${project.name}" e todas as suas tarefas?`)) return
@@ -94,7 +115,7 @@ export function ProjectDetails() {
     }, task.id)
   }
 
-  const outletContext: ProjectOutletContext = { project, tasks, users, keyPrefix, replaceTask, removeTask }
+  const outletContext: ProjectOutletContext = { project, tasks, users, keyPrefix, readOnly: archived, replaceTask, removeTask }
 
   return (
     <>
@@ -113,7 +134,29 @@ export function ProjectDetails() {
       ) : (
         <header className="page-header">
           <div className="page-header__text">
-            <h1>{project.name}</h1>
+            <div className="page-header__title">
+              <ProjectAvatar name={project.name} size="lg" />
+              <h1>{project.name}</h1>
+
+              {isOwner && !archived ? (
+                <select
+                  className={`status-pill status-pill--${project.status.toLowerCase()}`}
+                  aria-label="Status do projeto"
+                  value={project.status}
+                  onChange={(e) => changeStatus(e.target.value as ProjectStatus)}
+                >
+                  {PROJECT_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {PROJECT_STATUS_LABEL[status]}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className={`status-pill status-pill--${project.status.toLowerCase()}`}>
+                  {PROJECT_STATUS_LABEL[project.status]}
+                </span>
+              )}
+            </div>
             {project.description && <p className="page-header__description">{project.description}</p>}
           </div>
 
@@ -132,14 +175,21 @@ export function ProjectDetails() {
 
             {isOwner ? (
               <>
-                <button className="btn btn--ghost" onClick={() => setMembersOpen(true)}>
-                  <UserPlusIcon size={16} aria-hidden="true" />
-                  Compartilhar
-                </button>
-                <button className="btn btn--ghost" onClick={() => setEditing(true)}>
-                  <PencilSimpleIcon size={16} aria-hidden="true" />
-                  Editar
-                </button>
+                {!archived && (
+                  <>
+                    <button className="btn btn--ghost" onClick={() => setMembersOpen(true)}>
+                      <UserPlusIcon size={16} aria-hidden="true" />
+                      Compartilhar
+                    </button>
+                    <button className="btn btn--ghost" onClick={() => setEditing(true)}>
+                      <PencilSimpleIcon size={16} aria-hidden="true" />
+                      Editar
+                    </button>
+                    <button className="icon-btn icon-btn--lg" onClick={archiveProject} aria-label="Arquivar projeto" title="Arquivar projeto">
+                      <ArchiveIcon size={18} />
+                    </button>
+                  </>
+                )}
                 <button
                   className="icon-btn icon-btn--danger icon-btn--lg"
                   onClick={deleteProject}
@@ -154,6 +204,19 @@ export function ProjectDetails() {
             )}
           </div>
         </header>
+      )}
+
+      {archived && (
+        <div className="notice" role="status">
+          <ArchiveIcon size={18} aria-hidden="true" />
+          <span className="notice__text">Este projeto está arquivado e é somente leitura.</span>
+          {isOwner && (
+            <button className="btn btn--ghost btn--sm" onClick={restoreProject}>
+              <ArrowCounterClockwiseIcon size={14} aria-hidden="true" />
+              Restaurar
+            </button>
+          )}
+        </div>
       )}
 
       <div className="project-progress">
@@ -172,6 +235,7 @@ export function ProjectDetails() {
         keyPrefix={keyPrefix}
         usersById={usersById}
         busyTaskId={busyTaskId}
+        readOnly={archived}
         onCreate={createTask}
         onMove={moveTask}
         onDelete={deleteTask}

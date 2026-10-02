@@ -26,6 +26,20 @@ public class TasksController(TaskService tasks) : ControllerBase
     [HttpGet("tasks/{id:guid}/history")]
     public Task<IReadOnlyList<TaskEventResponse>> History(Guid id, CancellationToken ct) => tasks.HistoryAsync(id, ct);
 
+    [HttpPut("tasks/{id:guid}/star")]
+    public Task<TaskResponse> Star(Guid id, CancellationToken ct) => tasks.SetStarAsync(id, true, ct);
+
+    [HttpDelete("tasks/{id:guid}/star")]
+    public Task<TaskResponse> Unstar(Guid id, CancellationToken ct) => tasks.SetStarAsync(id, false, ct);
+
+    [HttpPost("tasks/{id:guid}/view")]
+    public async Task<IActionResult> MarkViewed(Guid id, CancellationToken ct)
+    {
+        await tasks.MarkViewedAsync(id, ct);
+
+        return NoContent();
+    }
+
     [HttpGet("tasks/{id:guid}/comments")]
     public Task<IReadOnlyList<TaskCommentResponse>> ListComments(Guid id, CancellationToken ct) =>
         tasks.ListCommentsAsync(id, ct);

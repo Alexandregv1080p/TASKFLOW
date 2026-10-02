@@ -2096,6 +2096,48 @@ Decisões:
 * [x] Drag-and-drop no Kanban (seção 37)
 * [x] Comentários nas tarefas (além da spec original)
 * [x] Compartilhamento de projetos com papéis de dono e membro (seção 34)
+* [x] Página "Para você" e diretório de projetos, no visual do Jira (além da spec original)
+
+### Para você (página inicial)
+
+```http
+GET    /api/for-you?filter=Recommended|Assigned|Starred|Worked|Viewed
+       → { recommendedProjects, assignedCount, items: [{ taskId, projectId, projectName, number, title, status, priority, assigneeName, starred, date }] }
+PUT    /api/tasks/{id}/star      marca com estrela      DELETE /api/tasks/{id}/star   desmarca
+POST   /api/tasks/{id}/view      registra que abri a tarefa → 204
+```
+
+| Aba | O que mostra | `date` usada no agrupamento |
+| --- | --- | --- |
+| Recomendado | Tarefas abertas atribuídas a mim + abertas em que trabalhei | Última atividade |
+| Atribuído a mim | Tarefas abertas atribuídas a mim (com contador) | Última movimentação da tarefa |
+| Com estrela | Tarefas que marquei | Quando marquei |
+| Trabalhado | Tarefas que alterei ou comentei (inclusive concluídas) | Minha última ação |
+| Visto | Tarefas que abri | Quando abri |
+
+* O frontend agrupa por data: Hoje, Ontem, Nesta semana, No último mês, Há mais de um mês.
+* "Trabalhado" é derivado do histórico (`TaskEvents`) e dos comentários, sem tabela nova. Estrela e "visto" são marcações pessoais (`TaskStars`, `TaskViews`, chave composta usuário + tarefa), idempotentes, e não entram no histórico da tarefa.
+* "Espaços recomendados" são os 3 projetos ativos mais recentes a que tenho acesso.
+* Só entram tarefas de projetos ativos a que tenho acesso. Limite de 50 itens por aba, sem paginação.
+* `TaskResponse` ganhou `starred` (se **eu** marquei).
+
+### Diretório de projetos
+
+```http
+GET    /api/projects?scope=All|Mine|Archived&search=trecho
+PATCH  /api/projects/{id}/status     { "status": "OnTrack|AtRisk|OffTrack|Paused|Completed" }
+POST   /api/projects/{id}/archive    POST /api/projects/{id}/restore
+```
+
+* **Abas:** Todos os projetos (ativos em que sou dono ou membro), Meus projetos (ativos que criei) e Arquivados.
+* **Busca** por trecho do nome, sem diferenciar maiúsculas, feita no banco (`lower(name) LIKE`, sem função específica do PostgreSQL na Application). No frontend a busca vive na URL (`?search=`), com espera de 250 ms entre digitar e consultar; a busca da barra superior leva ao diretório já filtrado.
+* **Status do projeto** (No prazo, Em risco, Atrasado, Pausado, Concluído): informado pelo dono, com a data da última atualização (`StatusUpdatedAt`) exibida no diretório.
+* **Arquivar:** o projeto sai das listas, do dashboard e do "Para você" e fica **somente leitura** (criar, alterar, mover, comentar e excluir tarefas respondem 400); nada é apagado e o dono pode restaurar. Estrela e "visto" continuam funcionando, por serem pessoais. Status e arquivamento são ações só do dono (403 para membros).
+* **Sem projetos:** ao entrar em Projetos sem ter nenhum, abre o modal "Você ainda não tem projetos para mostrar", com "Criar projeto" e "Mais sobre como funcionam os projetos", que mostra o texto de ajuda (o que é um projeto, o que se faz nele, pessoas, status e diretório). O mesmo texto fica sempre acessível pelo botão "Como funcionam os projetos".
+
+### Layout
+
+Barra superior fixa (marca, busca de projetos, botão "Criar", usuário) + menu lateral (Para você, Projetos com os recentes, Dashboard). Rotas: `/` Para você, `/projects` diretório, `/projects/:id` quadro, `/projects/:id/tasks/:taskId` detalhe da tarefa, `/dashboard` números. Paleta: fundo branco, neutros frios e azul como único acento; ícones de projeto com cor derivada do nome.
 
 Comentários:
 

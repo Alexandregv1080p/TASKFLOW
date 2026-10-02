@@ -9,6 +9,8 @@ interface Props {
   keyPrefix: string
   usersById: Map<string, UserSummary>
   busyTaskId: string | null
+  // Projeto arquivado: sem criar, mover ou excluir.
+  readOnly: boolean
   onCreate: (input: TaskInput) => Promise<void>
   onMove: (task: Task, status: TaskStatus) => void
   onDelete: (task: Task) => void
@@ -19,7 +21,7 @@ function canMove(task: Task, status: TaskStatus): boolean {
   return Math.abs(STATUSES.indexOf(status) - STATUSES.indexOf(task.status)) === 1
 }
 
-export function KanbanBoard({ tasks, keyPrefix, usersById, busyTaskId, onCreate, onMove, onDelete }: Props) {
+export function KanbanBoard({ tasks, keyPrefix, usersById, busyTaskId, readOnly, onCreate, onMove, onDelete }: Props) {
   // ponytail: drag-and-drop nativo (HTML5) não dispara em telas de toque; lá, e no teclado,
   // os botões de seta do card fazem o mesmo. Trocar por pointer events se o toque virar requisito.
   const [dragging, setDragging] = useState<Task | null>(null)
@@ -79,6 +81,7 @@ export function KanbanBoard({ tasks, keyPrefix, usersById, busyTaskId, onCreate,
                   taskKey={`${keyPrefix}-${task.number}`}
                   assignee={task.assignedToId ? usersById.get(task.assignedToId) : undefined}
                   busy={busyTaskId === task.id}
+                  readOnly={readOnly}
                   dragging={dragging?.id === task.id}
                   onDragStart={() => setDragging(task)}
                   onDragEnd={endDrag}
@@ -87,7 +90,7 @@ export function KanbanBoard({ tasks, keyPrefix, usersById, busyTaskId, onCreate,
                 />
               ))}
 
-              {status === 'Todo' ? (
+              {status === 'Todo' && !readOnly ? (
                 <TaskComposer onSubmit={onCreate} />
               ) : (
                 column.length === 0 && <p className="kanban__empty">Nenhuma tarefa</p>

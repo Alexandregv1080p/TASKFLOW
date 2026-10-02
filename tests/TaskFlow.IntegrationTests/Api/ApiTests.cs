@@ -112,6 +112,68 @@ public class ApiTests(DatabaseFixture db) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Diretorio_status_e_arquivamento_pela_api()
+    {
+        var id = (await CreateProjectAsync()).GetProperty("id").GetString();
+
+        var status = await _client.PatchAsJsonAsync($"/api/projects/{id}/status", new { status = "AtRisk" });
+        Assert.Equal("AtRisk", (await status.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+        await AssertErrorAsync(await _client.PatchAsJsonAsync($"/api/projects/{id}/status", new { status = "Sumiu" }), HttpStatusCode.BadRequest);
+
+        // Escopo e busca vêm pela query string, sem diferenciar maiúsculas.
+        var found = await _client.GetFromJsonAsync<JsonElement>("/api/projects?scope=mine&search=WEB");
+        Assert.Equal("AtRisk", Assert.Single(found.EnumerateArray()).GetProperty("status").GetString());
+        Assert.Equal(0, (await _client.GetFromJsonAsync<JsonElement>("/api/projects?search=nada")).GetArrayLength());
+        await AssertErrorAsync(await _client.GetAsync("/api/projects?scope=invalido"), HttpStatusCode.BadRequest);
+
+        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsync($"/api/projects/{id}/archive", null)).StatusCode);
+        Assert.Equal(0, (await _client.GetFromJsonAsync<JsonElement>("/api/projects")).GetArrayLength());
+        Assert.Equal(1, (await _client.GetFromJsonAsync<JsonElement>("/api/projects?scope=archived")).GetArrayLength());
+
+        // Arquivado é somente leitura: criar tarefa responde 400 no formato padrão.
+        await AssertErrorAsync(
+            await _client.PostAsJsonAsync($"/api/projects/{id}/tasks", new { title = "Nova", priority = "Low" }),
+            HttpStatusCode.BadRequest);
+
+        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsync($"/api/projects/{id}/restore", null)).StatusCode);
+        Assert.Equal(1, (await _client.GetFromJsonAsync<JsonElement>("/api/projects")).GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Para_voce_pela_api()
+    {
+        var projectId = (await CreateProjectAsync()).GetProperty("id").GetString();
+        var task = await (await _client.PostAsJsonAsync($"/api/projects/{projectId}/tasks",
+            new { title = "Destaque", priority = "High" })).Content.ReadFromJsonAsync<JsonElement>();
+        var taskId = task.GetProperty("id").GetString();
+        Assert.False(task.GetProperty("starred").GetBoolean());
+
+        var starred = await _client.PutAsync($"/api/tasks/{taskId}/star", null);
+        Assert.True((await starred.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("starred").GetBoolean());
+        Assert.Equal(HttpStatusCode.NoContent, (await _client.PostAsync($"/api/tasks/{taskId}/view", null)).StatusCode);
+
+        foreach (var filter in new[] { "starred", "viewed", "worked" })
+        {
+            var response = await _client.GetFromJsonAsync<JsonElement>($"/api/for-you?filter={filter}");
+            var item = Assert.Single(response.GetProperty("items").EnumerateArray());
+
+            Assert.Equal(taskId, item.GetProperty("taskId").GetString());
+            Assert.Equal("Website", item.GetProperty("projectName").GetString());
+            Assert.True(item.GetProperty("starred").GetBoolean());
+        }
+
+        // Sem filtro = Recomendado. Criar a tarefa conta como "trabalhei nela".
+        var recommended = await _client.GetFromJsonAsync<JsonElement>("/api/for-you");
+        Assert.Equal(1, recommended.GetProperty("items").GetArrayLength());
+        Assert.Equal(1, recommended.GetProperty("recommendedProjects").GetArrayLength());
+        Assert.Equal(0, recommended.GetProperty("assignedCount").GetInt32());
+
+        await _client.DeleteAsync($"/api/tasks/{taskId}/star");
+        Assert.Equal(0, (await _client.GetFromJsonAsync<JsonElement>("/api/for-you?filter=starred")).GetProperty("items").GetArrayLength());
+        await AssertErrorAsync(await _client.GetAsync("/api/for-you?filter=invalido"), HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Comentarios_pela_api()
     {
         var projectId = (await CreateProjectAsync()).GetProperty("id").GetString();
