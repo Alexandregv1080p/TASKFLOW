@@ -21,8 +21,12 @@ public class Project : Entity
 
     public bool IsArchived => ArchivedAt is not null;
 
-    public Project(string name, string? description, Guid ownerId)
+    // Espaço a que o projeto pertence. Nulo = projeto avulso, sem espaço.
+    public Guid? SpaceId { get; private set; }
+
+    public Project(string name, string? description, Guid ownerId, Guid? spaceId = null)
     {
+        SpaceId = spaceId;
         OwnerId = Guard.NotEmpty(ownerId, nameof(OwnerId));
         Name = Guard.Required(name, NameMaxLength, nameof(Name));
         Description = Guard.Optional(description, DescriptionMaxLength, nameof(Description));
@@ -45,6 +49,13 @@ public class Project : Entity
 
         Status = status;
         StatusUpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MoveToSpace(Guid? spaceId)
+    {
+        EnsureActive();
+
+        SpaceId = spaceId;
     }
 
     public void Archive() => ArchivedAt ??= DateTime.UtcNow;

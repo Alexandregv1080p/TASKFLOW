@@ -8,6 +8,8 @@ public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : Db
 {
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<Space> Spaces => Set<Space>();
+
     public DbSet<Project> Projects => Set<Project>();
 
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();

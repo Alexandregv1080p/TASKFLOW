@@ -16,9 +16,10 @@ public enum ProjectScope
     Archived
 }
 
-public record CreateProjectRequest(string Name, string? Description);
+// SpaceId nulo = projeto sem espaço. Só dá para usar um espaço do próprio usuário.
+public record CreateProjectRequest(string Name, string? Description, Guid? SpaceId = null);
 
-public record UpdateProjectRequest(string Name, string? Description);
+public record UpdateProjectRequest(string Name, string? Description, Guid? SpaceId = null);
 
 public record ChangeProjectStatusRequest(ProjectStatus Status);
 
@@ -28,6 +29,8 @@ public record ProjectSummaryResponse(
     string? Description,
     Guid OwnerId,
     string OwnerName,
+    Guid? SpaceId,
+    string? SpaceName,
     ProjectStatus Status,
     DateTime StatusUpdatedAt,
     bool Archived,
@@ -40,11 +43,13 @@ public record ProjectResponse(
     string Name,
     string? Description,
     Guid OwnerId,
+    Guid? SpaceId,
+    string? SpaceName,
     ProjectStatus Status,
     DateTime StatusUpdatedAt,
     DateTime? ArchivedAt,
     DateTime CreatedAt)
 {
-    public static ProjectResponse From(Project p) =>
-        new(p.Id, p.Name, p.Description, p.OwnerId, p.Status, p.StatusUpdatedAt, p.ArchivedAt, p.CreatedAt);
+    public static ProjectResponse From(Project p, string? spaceName) =>
+        new(p.Id, p.Name, p.Description, p.OwnerId, p.SpaceId, spaceName, p.Status, p.StatusUpdatedAt, p.ArchivedAt, p.CreatedAt);
 }

@@ -9,6 +9,8 @@ public interface ITaskFlowDbContext
 {
     DbSet<User> Users { get; }
 
+    DbSet<Space> Spaces { get; }
+
     DbSet<Project> Projects { get; }
 
     DbSet<ProjectMember> ProjectMembers { get; }

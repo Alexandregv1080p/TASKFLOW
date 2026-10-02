@@ -11,7 +11,9 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
 {
     public async Task<ProjectResponse> CreateAsync(CreateProjectRequest request, CancellationToken ct = default)
     {
-        var project = new Project(request.Name, request.Description, currentUser.UserId);
+        await EnsureOwnSpaceAsync(request.SpaceId, ct);
+
+        var project = new Project(request.Name, request.Description, currentUser.UserId, request.SpaceId);
 
         db.Projects.Add(project);
         await db.SaveChangesAsync(ct);
@@ -19,14 +21,15 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
         logger.LogInformation("ProjectCreated {ProjectId} {UserId}", project.Id, project.OwnerId);
         TaskFlowMetrics.ProjectsCreated.Add(1);
 
-        return ProjectResponse.From(project);
+        return await ResponseAsync(project, ct);
     }
 
-    // Diretório de projetos: escopo (aba), busca por nome e limite opcional.
+    // Diretório de projetos: escopo (aba), busca por nome, espaço e limite opcionais.
     public async Task<IReadOnlyList<ProjectSummaryResponse>> ListAsync(
         ProjectScope scope = ProjectScope.All,
         string? search = null,
         int? limit = null,
+        Guid? spaceId = null,
         CancellationToken ct = default)
     {
         var userId = currentUser.UserId;
@@ -38,6 +41,9 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
             ProjectScope.Archived => query.Where(p => p.ArchivedAt != null),
             _ => query.Where(p => p.ArchivedAt == null)
         };
+
+        if (spaceId is { } space)
+            query = query.Where(p => p.SpaceId == space);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -51,7 +57,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
         if (limit is { } take)
             query = query.Take(take);
 
-        // Contagens e nome do dono calculados no banco (subconsultas), sem carregar tarefas nem usuários.
+        // Contagens, dono e espaço calculados no banco (subconsultas), sem carregar tarefas nem usuários.
         return await query
             .Select(p => new ProjectSummaryResponse(
                 p.Id,
@@ -59,6 +65,8 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
                 p.Description,
                 p.OwnerId,
                 db.Users.Where(u => u.Id == p.OwnerId).Select(u => u.Name).First(),
+                p.SpaceId,
+                db.Spaces.Where(s => s.Id == p.SpaceId).Select(s => s.Name).FirstOrDefault(),
                 p.Status,
                 p.StatusUpdatedAt,
                 p.ArchivedAt != null,
@@ -69,16 +77,23 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
     }
 
     public async Task<ProjectResponse> GetAsync(Guid id, CancellationToken ct = default) =>
-        ProjectResponse.From(await db.FindAccessibleProjectAsync(currentUser.UserId, id, ct));
+        await ResponseAsync(await db.FindAccessibleProjectAsync(currentUser.UserId, id, ct), ct);
 
     public async Task<ProjectResponse> UpdateAsync(Guid id, UpdateProjectRequest request, CancellationToken ct = default)
     {
         var project = await db.FindOwnedProjectAsync(currentUser.UserId, id, ct);
 
         project.Update(request.Name, request.Description);
+
+        if (request.SpaceId != project.SpaceId)
+        {
+            await EnsureOwnSpaceAsync(request.SpaceId, ct);
+            project.MoveToSpace(request.SpaceId);
+        }
+
         await db.SaveChangesAsync(ct);
 
-        return ProjectResponse.From(project);
+        return await ResponseAsync(project, ct);
     }
 
     public async Task<ProjectResponse> ChangeStatusAsync(Guid id, ChangeProjectStatusRequest request, CancellationToken ct = default)
@@ -92,7 +107,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
         logger.LogInformation(
             "ProjectStatusChanged {ProjectId} {OldStatus} {NewStatus} {UserId}", id, oldStatus, project.Status, currentUser.UserId);
 
-        return ProjectResponse.From(project);
+        return await ResponseAsync(project, ct);
     }
 
     public async Task<ProjectResponse> ArchiveAsync(Guid id, CancellationToken ct = default)
@@ -104,7 +119,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
 
         logger.LogInformation("ProjectArchived {ProjectId} {UserId}", id, currentUser.UserId);
 
-        return ProjectResponse.From(project);
+        return await ResponseAsync(project, ct);
     }
 
     public async Task<ProjectResponse> RestoreAsync(Guid id, CancellationToken ct = default)
@@ -116,7 +131,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
 
         logger.LogInformation("ProjectRestored {ProjectId} {UserId}", id, currentUser.UserId);
 
-        return ProjectResponse.From(project);
+        return await ResponseAsync(project, ct);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -125,5 +140,27 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("ProjectDeleted {ProjectId} {UserId}", id, currentUser.UserId);
+    }
+
+    // Um projeto só entra em um espaço do próprio usuário. Espaço de outra pessoa responde 404,
+    // sem revelar que existe.
+    private async Task EnsureOwnSpaceAsync(Guid? spaceId, CancellationToken ct)
+    {
+        if (spaceId is not { } id)
+            return;
+
+        var userId = currentUser.UserId;
+
+        if (!await db.Spaces.AnyAsync(s => s.Id == id && s.OwnerId == userId, ct))
+            throw new NotFoundException(nameof(Space), id);
+    }
+
+    private async Task<ProjectResponse> ResponseAsync(Project project, CancellationToken ct)
+    {
+        var spaceName = project.SpaceId is { } spaceId
+            ? await db.Spaces.Where(s => s.Id == spaceId).Select(s => s.Name).FirstOrDefaultAsync(ct)
+            : null;
+
+        return ProjectResponse.From(project, spaceName);
     }
 }

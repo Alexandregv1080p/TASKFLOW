@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Application.Common;
 using TaskFlow.Application.ForYou;
 using TaskFlow.Application.Projects;
+using TaskFlow.Application.Spaces;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
@@ -23,7 +24,8 @@ public class ForYouAndDirectoryTests(DatabaseFixture db)
         new(context, user, NullLogger<TaskService>.Instance);
 
     private static ForYouService ForYou(TaskFlowDbContext context, ICurrentUser user) =>
-        new(context, user, Projects(context, user));
+        new(context, user, Projects(context, user),
+            new SpaceService(context, user, Projects(context, user), NullLogger<SpaceService>.Instance));
 
     private async Task<(ICurrentUser user, string email)> SeedUserAsync(string name = "Ana")
     {

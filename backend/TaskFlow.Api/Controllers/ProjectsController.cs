@@ -7,13 +7,14 @@ namespace TaskFlow.Api.Controllers;
 [Route("api/projects")]
 public class ProjectsController(ProjectService projects) : ControllerBase
 {
-    // Diretório de projetos. scope: All (padrão), Mine ou Archived; search: trecho do nome.
+    // Diretório de projetos. scope: All (padrão), Mine ou Archived; search: trecho do nome; spaceId: só de um espaço.
     [HttpGet]
     public Task<IReadOnlyList<ProjectSummaryResponse>> List(
         [FromQuery] ProjectScope scope = ProjectScope.All,
         [FromQuery] string? search = null,
+        [FromQuery] Guid? spaceId = null,
         CancellationToken ct = default) =>
-        projects.ListAsync(scope, search, ct: ct);
+        projects.ListAsync(scope, search, spaceId: spaceId, ct: ct);
 
     [HttpGet("{id:guid}")]
     public Task<ProjectResponse> Get(Guid id, CancellationToken ct) => projects.GetAsync(id, ct);

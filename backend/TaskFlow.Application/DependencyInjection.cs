@@ -4,6 +4,7 @@ using TaskFlow.Application.Dashboard;
 using TaskFlow.Application.ForYou;
 using TaskFlow.Application.Goals;
 using TaskFlow.Application.Projects;
+using TaskFlow.Application.Spaces;
 using TaskFlow.Application.Tasks;
 
 namespace TaskFlow.Application;
@@ -15,6 +16,7 @@ public static class DependencyInjection
         services.AddScoped<AuthService>();
         services.AddScoped<ProjectService>();
         services.AddScoped<ProjectMemberService>();
+        services.AddScoped<SpaceService>();
         services.AddScoped<TaskService>();
         services.AddScoped<DashboardService>();
         services.AddScoped<ForYouService>();

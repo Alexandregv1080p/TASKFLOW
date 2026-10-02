@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Common;
 using TaskFlow.Application.Projects;
+using TaskFlow.Application.Spaces;
 using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Application.ForYou;
@@ -39,12 +40,15 @@ public record ForYouItem(
     bool Starred,
     DateTime Date);
 
+// RecommendedSpaces: os espaços mais recentes a que tenho acesso. RecommendedProjects continua vindo
+// para quem ainda não usa espaços (o frontend mostra projetos quando não há espaços).
 public record ForYouResponse(
+    IReadOnlyList<SpaceSummaryResponse> RecommendedSpaces,
     IReadOnlyList<ProjectSummaryResponse> RecommendedProjects,
     int AssignedCount,
     IReadOnlyList<ForYouItem> Items);
 
-public class ForYouService(ITaskFlowDbContext db, ICurrentUser currentUser, ProjectService projects)
+public class ForYouService(ITaskFlowDbContext db, ICurrentUser currentUser, ProjectService projects, SpaceService spaces)
 {
     private const int RecommendedProjectsLimit = 3;
 
@@ -103,6 +107,7 @@ public class ForYouService(ITaskFlowDbContext db, ICurrentUser currentUser, Proj
             .ToList();
 
         return new ForYouResponse(
+            await spaces.ListAsync(RecommendedProjectsLimit, ct),
             await projects.ListAsync(limit: RecommendedProjectsLimit, ct: ct),
             await tasks.CountAsync(t => t.AssignedToId == userId && t.Status != TaskItemStatus.Done, ct),
             items);

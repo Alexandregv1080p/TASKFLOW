@@ -21,5 +21,11 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .WithMany()
             .HasForeignKey(p => p.OwnerId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Excluir o espaço não apaga os projetos: eles ficam sem espaço.
+        builder.HasOne<Space>()
+            .WithMany()
+            .HasForeignKey(p => p.SpaceId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

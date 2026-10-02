@@ -95,6 +95,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SpaceId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -106,6 +109,8 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerId");
+
+                    b.HasIndex("SpaceId");
 
                     b.ToTable("Projects", (string)null);
                 });
@@ -126,6 +131,33 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("ProjectMembers", (string)null);
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Space", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Spaces", (string)null);
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.TaskComment", b =>
@@ -343,6 +375,11 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.Space", null)
+                        .WithMany()
+                        .HasForeignKey("SpaceId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.ProjectMember", b =>
@@ -357,6 +394,15 @@ namespace TaskFlow.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Space", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
