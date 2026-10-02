@@ -22,6 +22,10 @@ public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : Db
 
     public DbSet<TaskView> TaskViews => Set<TaskView>();
 
+    public DbSet<Goal> Goals => Set<Goal>();
+
+    public DbSet<GoalProject> GoalProjects => Set<GoalProject>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(TaskFlowDbContext).Assembly);
 }

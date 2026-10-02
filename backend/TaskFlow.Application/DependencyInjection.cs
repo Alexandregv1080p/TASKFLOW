@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Application.Auth;
 using TaskFlow.Application.Dashboard;
 using TaskFlow.Application.ForYou;
+using TaskFlow.Application.Goals;
 using TaskFlow.Application.Projects;
 using TaskFlow.Application.Tasks;
 
@@ -17,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<TaskService>();
         services.AddScoped<DashboardService>();
         services.AddScoped<ForYouService>();
+        services.AddScoped<GoalService>();
 
         return services;
     }
