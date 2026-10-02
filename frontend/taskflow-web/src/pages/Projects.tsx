@@ -32,7 +32,8 @@ export function Projects() {
   const [term, setTerm] = useState(search)
 
   const { data, loading, error, reload, setData } = useAsync(() => api.listProjects(scope, search), [scope, search])
-  const [help, setHelp] = useState<'empty' | 'help' | null>(null)
+  // ?help=1 (link do dashboard) já abre a explicação de como funcionam os projetos.
+  const [help, setHelp] = useState<'empty' | 'help' | null>(params.has('help') ? 'help' : null)
   const [emptyDismissed, setEmptyDismissed] = useState(false)
   const [actionError, setActionError] = useState<string>()
 
@@ -271,6 +272,7 @@ export function Projects() {
           onClose={() => {
             setHelp(null)
             setEmptyDismissed(true)
+            setParam('help', null)
           }}
           onCreate={openCreate}
         />

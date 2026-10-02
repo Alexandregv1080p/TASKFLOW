@@ -3,6 +3,8 @@ import type {
   Dashboard,
   ForYouFilter,
   ForYouResponse,
+  Goal,
+  GoalInput,
   Project,
   ProjectInput,
   ProjectMember,
@@ -111,6 +113,11 @@ export const api = {
 
   getDashboard: () => request<Dashboard>('/dashboard'),
   getForYou: (filter: ForYouFilter) => request<ForYouResponse>(`/for-you?filter=${filter}`),
+
+  listGoals: () => request<Goal[]>('/goals'),
+  createGoal: (input: GoalInput) => request<Goal>('/goals', 'POST', input),
+  updateGoal: (id: string, input: GoalInput) => request<Goal>(`/goals/${id}`, 'PUT', input),
+  deleteGoal: (id: string) => request<void>(`/goals/${id}`, 'DELETE'),
 
   // Diretório de projetos: aba (escopo) e busca por nome.
   listProjects: (scope: ProjectScope = 'All', search = '') =>

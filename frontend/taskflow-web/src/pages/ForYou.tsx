@@ -1,6 +1,6 @@
 import { CheckSquareIcon, StarIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Avatar } from '../components/Avatar'
 import { ErrorMessage, Loading } from '../components/Feedback'
 import { ProjectAvatar } from '../components/ProjectAvatar'
@@ -26,7 +26,12 @@ const EMPTY: Record<ForYouFilter, string> = {
 }
 
 export function ForYou() {
-  const [filter, setFilter] = useState<ForYouFilter>('Recommended')
+  // A aba vive na URL (?filter=): os atalhos "Recentes" e "Com estrela" do menu abrem direto nela.
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('filter')
+  const filter = TABS.find((tab) => tab.filter === requested)?.filter ?? 'Recommended'
+  const setFilter = (next: ForYouFilter) => setParams(next === 'Recommended' ? {} : { filter: next })
+
   const { data, loading, error, reload, setData } = useAsync(() => api.getForYou(filter), [filter])
   const [actionError, setActionError] = useState<string>()
 

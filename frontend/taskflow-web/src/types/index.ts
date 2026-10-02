@@ -57,6 +57,27 @@ export interface ProjectSummary {
   doneCount: number
 }
 
+// Meta pessoal; o progresso (taskCount/doneCount) soma as tarefas dos projetos ligados.
+export interface Goal {
+  id: string
+  name: string
+  description: string | null
+  targetDate: string | null
+  status: ProjectStatus
+  createdAt: string
+  projects: { id: string; name: string; taskCount: number; doneCount: number }[]
+  taskCount: number
+  doneCount: number
+}
+
+export interface GoalInput {
+  name: string
+  description: string | null
+  targetDate: string | null
+  status: ProjectStatus
+  projectIds: string[]
+}
+
 // Abas da página "Para você".
 export type ForYouFilter = 'Recommended' | 'Assigned' | 'Starred' | 'Worked' | 'Viewed'
 

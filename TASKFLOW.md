@@ -2097,6 +2097,7 @@ Decisões:
 * [x] Comentários nas tarefas (além da spec original)
 * [x] Compartilhamento de projetos com papéis de dono e membro (seção 34)
 * [x] Página "Para você" e diretório de projetos, no visual do Jira (além da spec original)
+* [x] Metas, dashboard em painéis e barra lateral personalizável (além da spec original)
 
 ### Para você (página inicial)
 
@@ -2135,9 +2136,34 @@ POST   /api/projects/{id}/archive    POST /api/projects/{id}/restore
 * **Arquivar:** o projeto sai das listas, do dashboard e do "Para você" e fica **somente leitura** (criar, alterar, mover, comentar e excluir tarefas respondem 400); nada é apagado e o dono pode restaurar. Estrela e "visto" continuam funcionando, por serem pessoais. Status e arquivamento são ações só do dono (403 para membros).
 * **Sem projetos:** ao entrar em Projetos sem ter nenhum, abre o modal "Você ainda não tem projetos para mostrar", com "Criar projeto" e "Mais sobre como funcionam os projetos", que mostra o texto de ajuda (o que é um projeto, o que se faz nele, pessoas, status e diretório). O mesmo texto fica sempre acessível pelo botão "Como funcionam os projetos".
 
+### Metas
+
+```http
+GET    /api/goals
+POST   /api/goals          { "name", "description", "targetDate", "status", "projectIds": [] }  → 201
+PUT    /api/goals/{id}     (mesmo corpo; troca o conjunto de projetos ligados)
+DELETE /api/goals/{id}     → 204
+```
+
+* Uma meta tem nome, descrição, data alvo (só a data) e situação, na mesma escala do status de projeto (No prazo, Em risco, Atrasado, Pausado, Concluído).
+* **Progresso calculado:** a meta pode ser ligada a projetos (`GoalProjects`); `taskCount`/`doneCount` somam as tarefas desses projetos, contadas no banco. Sem projetos ligados, a meta existe com progresso zerado.
+* **Pessoais:** cada usuário só vê e altera as próprias metas (404 para as de outros). Só dá para ligar projetos a que o usuário tem acesso; se ele perder o acesso a um projeto ligado, o projeto deixa de contar na meta.
+* Excluir uma meta não altera os projetos; excluir um projeto desfaz a ligação e mantém a meta.
+* No frontend (`/goals`): lista com situação, progresso, data alvo ("Venceu em..." quando passou sem estar concluída) e os projetos ligados; formulário de criar/editar com seleção de projetos.
+
+### Dashboards
+
+A seção "Dashboards" do menu tem o **Dashboard padrão** (`/dashboard`), em painéis no formato do dashboard do Jira: Introdução, Projetos (com o líder de cada um), Resumo das tarefas (por status e prioridade) e Atribuído a mim (tabela Tipo/Chave/Resumo/Prioridade, 15 por página, "1-15 de N"). O botão "Atualizar" recarrega tudo e cada painel mostra a hora da última atualização. Não exigiu backend novo: usa `/api/dashboard`, `/api/projects` e `/api/for-you?filter=Assigned`. Dashboards personalizados (vários, com painéis escolhidos pelo usuário) não foram implementados.
+
+### Personalizar a barra lateral
+
+O botão "Personalizar barra lateral" abre um diálogo com um interruptor por seção: Recentes, Com estrela, Projetos, Metas e Dashboards. "Para você" é fixa, para o menu nunca ficar vazio. A mudança vale na hora; esconder uma seção só a tira do menu, a página continua acessível pelo endereço. A preferência é de interface e fica no navegador (`localStorage`, uma chave por usuário): não acompanha a pessoa em outro aparelho. Passaria para a API se isso virasse necessidade.
+
+"Recentes" e "Com estrela" são atalhos para as abas Visto e Com estrela da página Para você, cuja aba agora vive na URL (`/?filter=Viewed`).
+
 ### Layout
 
-Barra superior fixa (marca, busca de projetos, botão "Criar", usuário) + menu lateral (Para você, Projetos com os recentes, Dashboard). Rotas: `/` Para você, `/projects` diretório, `/projects/:id` quadro, `/projects/:id/tasks/:taskId` detalhe da tarefa, `/dashboard` números. Paleta: fundo branco, neutros frios e azul como único acento; ícones de projeto com cor derivada do nome.
+Barra superior fixa (marca, busca de projetos, botão "Criar", usuário) + menu lateral (Para você, Recentes, Com estrela, Projetos com os recentes, Metas, Dashboards). Rotas: `/` Para você, `/projects` diretório, `/projects/:id` quadro, `/projects/:id/tasks/:taskId` detalhe da tarefa, `/goals` metas, `/dashboard` dashboard padrão. Paleta: fundo branco, neutros frios e azul como único acento; ícones de projeto com cor derivada do nome.
 
 Comentários:
 
