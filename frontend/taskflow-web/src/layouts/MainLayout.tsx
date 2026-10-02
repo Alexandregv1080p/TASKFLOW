@@ -1,6 +1,7 @@
 import {
   ChartBarIcon,
   ClockIcon,
+  GaugeIcon,
   KanbanIcon,
   MagnifyingGlassIcon,
   PlusIcon,
@@ -35,6 +36,7 @@ export function MainLayout() {
   // ponytail: os projetos recentes do menu são recarregados a cada troca de página; é uma consulta leve
   // e evita um estado global. Trocar por cache compartilhado se o menu ganhar mais dados.
   const { data: projects } = useAsync(() => api.listProjects('All'), [location.pathname])
+  const { data: spaces } = useAsync(api.listSpaces, [location.pathname])
 
   // "Para você", "Recentes" e "Com estrela" são a mesma página com abas diferentes (?filter=),
   // então o item ativo depende da query string, que o NavLink não considera.
@@ -109,6 +111,32 @@ export function MainLayout() {
             </Link>
           )}
 
+          {prefs.spaces && (
+            <>
+              <div className="sidebar__row">
+                <NavLink to="/spaces" end className="sidebar__link">
+                  <SquaresFourIcon size={18} aria-hidden="true" />
+                  Espaços
+                </NavLink>
+                <Link to="/spaces/new" className="icon-btn" aria-label="Criar espaço" title="Criar espaço">
+                  <PlusIcon size={15} weight="bold" />
+                </Link>
+              </div>
+
+              {spaces && spaces.length > 0 && (
+                <div className="sidebar__group" aria-label="Espaços recentes">
+                  <span className="sidebar__group-title">Recentes</span>
+                  {spaces.slice(0, RECENT_PROJECTS).map((space) => (
+                    <NavLink key={space.id} to={`/spaces/${space.id}`} className="sidebar__link sidebar__link--sub">
+                      <ProjectAvatar name={space.name} size="sm" />
+                      <span className="sidebar__link-text">{space.name}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
           {prefs.projects && (
             <>
               <NavLink to="/projects" end className="sidebar__link">
@@ -145,7 +173,7 @@ export function MainLayout() {
               </span>
               <div className="sidebar__group" aria-label="Dashboards">
                 <NavLink to="/dashboard" className="sidebar__link sidebar__link--sub">
-                  <SquaresFourIcon size={16} aria-hidden="true" />
+                  <GaugeIcon size={16} aria-hidden="true" />
                   <span className="sidebar__link-text">Dashboard padrão</span>
                 </NavLink>
               </div>

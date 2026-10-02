@@ -31,6 +31,9 @@ export interface Project {
   name: string
   description: string | null
   ownerId: string
+  // Espaço a que o projeto pertence; nulo = projeto sem espaço.
+  spaceId: string | null
+  spaceName: string | null
   status: ProjectStatus
   statusUpdatedAt: string
   // Preenchido quando o projeto está arquivado (somente leitura).
@@ -49,6 +52,8 @@ export interface ProjectSummary {
   description: string | null
   ownerId: string
   ownerName: string
+  spaceId: string | null
+  spaceName: string | null
   status: ProjectStatus
   statusUpdatedAt: string
   archived: boolean
@@ -96,7 +101,39 @@ export interface ForYouItem {
   date: string
 }
 
+// Espaço: agrupa projetos de uma área ou time. projectCount conta os projetos ativos que eu consigo ver.
+export interface SpaceSummary {
+  id: string
+  name: string
+  description: string | null
+  ownerId: string
+  ownerName: string
+  projectCount: number
+  createdAt: string
+}
+
+export interface Space {
+  id: string
+  name: string
+  description: string | null
+  ownerId: string
+  ownerName: string
+  createdAt: string
+  projects: ProjectSummary[]
+}
+
+// Modelo da galeria: criar um espaço a partir dele já traz projetos e tarefas iniciais.
+export interface SpaceTemplate {
+  key: string
+  name: string
+  description: string
+  category: string
+  recommended: boolean
+  projects: { name: string; description: string; taskCount: number }[]
+}
+
 export interface ForYouResponse {
+  recommendedSpaces: SpaceSummary[]
   recommendedProjects: ProjectSummary[]
   assignedCount: number
   items: ForYouItem[]
@@ -156,6 +193,7 @@ export interface Dashboard {
 export interface ProjectInput {
   name: string
   description: string | null
+  spaceId: string | null
 }
 
 export interface TaskInput {

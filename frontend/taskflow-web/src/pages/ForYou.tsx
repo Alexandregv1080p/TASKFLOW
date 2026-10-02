@@ -57,6 +57,8 @@ export function ForYou() {
   if (error && !data) return <ErrorMessage message={error} onRetry={reload} />
   if (!data) return null
 
+  const showSpaces = data.recommendedSpaces.length > 0
+
   // Os itens já vêm do mais recente para o mais antigo: agrupar preserva a ordem dos grupos.
   const groups = new Map<string, ForYouItem[]>()
   for (const item of data.items) {
@@ -70,17 +72,32 @@ export function ForYou() {
 
       <section className="for-you__section">
         <div className="section__header">
-          <h2>Espaços recomendados</h2>
-          <Link to="/projects" className="section__link">
-            Ver todos os projetos
+          <h2>{showSpaces || data.recommendedProjects.length === 0 ? 'Espaços recomendados' : 'Projetos recomendados'}</h2>
+          <Link to={showSpaces ? '/spaces' : '/projects'} className="section__link">
+            {showSpaces ? 'Ver todos os espaços' : 'Ver todos os projetos'}
           </Link>
         </div>
 
-        {data.recommendedProjects.length === 0 ? (
+        {/* Quem já usa espaços vê os espaços; quem só tem projetos avulsos vê os projetos. */}
+        {showSpaces ? (
+          <div className="space-list">
+            {data.recommendedSpaces.map((space) => (
+              <Link key={space.id} to={`/spaces/${space.id}`} className="space-card">
+                <ProjectAvatar name={space.name} size="lg" />
+                <span className="space-card__text">
+                  <span className="space-card__name">{space.name}</span>
+                  <span className="space-card__meta">
+                    {space.projectCount} {space.projectCount === 1 ? 'projeto' : 'projetos'}
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : data.recommendedProjects.length === 0 ? (
           <div className="empty-state">
-            <p>Você ainda não participa de nenhum projeto.</p>
-            <Link to="/projects?new=1" className="btn btn--primary">
-              Criar projeto
+            <p>Você ainda não tem espaços nem projetos. Um espaço criado a partir de um modelo já vem com projetos e tarefas iniciais.</p>
+            <Link to="/spaces/new" className="btn btn--primary">
+              Criar espaço
             </Link>
           </div>
         ) : (

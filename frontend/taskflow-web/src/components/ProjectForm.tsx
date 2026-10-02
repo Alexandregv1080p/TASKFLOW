@@ -1,16 +1,21 @@
 import { useState, type FormEvent } from 'react'
-import type { ProjectInput } from '../types'
+import type { ProjectInput, SpaceSummary } from '../types'
 
 interface Props {
   initial?: ProjectInput
+  // Espaços em que o usuário pode colocar o projeto (os que ele criou).
+  spaces: SpaceSummary[]
+  // Espaço já escolhido ao abrir (ex.: "Novo projeto" clicado dentro de um espaço).
+  defaultSpaceId?: string | null
   submitLabel: string
   onSubmit: (input: ProjectInput) => Promise<void>
   onCancel: () => void
 }
 
-export function ProjectForm({ initial, submitLabel, onSubmit, onCancel }: Props) {
+export function ProjectForm({ initial, spaces, defaultSpaceId, submitLabel, onSubmit, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
+  const [spaceId, setSpaceId] = useState(initial?.spaceId ?? defaultSpaceId ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string>()
 
@@ -20,7 +25,7 @@ export function ProjectForm({ initial, submitLabel, onSubmit, onCancel }: Props)
     setError(undefined)
 
     try {
-      await onSubmit({ name, description: description.trim() || null })
+      await onSubmit({ name, description: description.trim() || null, spaceId: spaceId || null })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar.')
       setSaving(false)
@@ -43,6 +48,23 @@ export function ProjectForm({ initial, submitLabel, onSubmit, onCancel }: Props)
       <label className="field">
         <span className="field__label">Descrição</span>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} rows={2} />
+      </label>
+
+      <label className="field">
+        <span className="field__label">Espaço</span>
+        <select value={spaceId} onChange={(e) => setSpaceId(e.target.value)}>
+          <option value="">Sem espaço</option>
+          {spaces.map((space) => (
+            <option key={space.id} value={space.id}>
+              {space.name}
+            </option>
+          ))}
+        </select>
+        <span className="field__hint">
+          {spaces.length === 0
+            ? 'Você ainda não criou espaços. O projeto pode ficar sem espaço e ser movido depois.'
+            : 'Um espaço agrupa os projetos de uma mesma área ou time.'}
+        </span>
       </label>
 
       {error && (

@@ -8,6 +8,9 @@ import { ForYou } from './pages/ForYou'
 import { Goals } from './pages/Goals'
 import { ProjectDetails } from './pages/ProjectDetails'
 import { Projects } from './pages/Projects'
+import { SpaceDetails } from './pages/SpaceDetails'
+import { SpaceTemplates } from './pages/SpaceTemplates'
+import { Spaces } from './pages/Spaces'
 
 export default function App() {
   return (
@@ -27,6 +30,9 @@ export default function App() {
             <Route index element={<ForYou />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="goals" element={<Goals />} />
+            <Route path="spaces" element={<Spaces />} />
+            <Route path="spaces/new" element={<SpaceTemplates />} />
+            <Route path="spaces/:id" element={<SpaceDetails />} />
             <Route path="projects" element={<Projects />} />
             {/* O detalhe da tarefa abre em modal sobre o quadro, com URL própria (compartilhável). */}
             <Route path="projects/:id" element={<ProjectDetails />}>

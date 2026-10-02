@@ -11,6 +11,9 @@ import type {
   ProjectScope,
   ProjectStatus,
   ProjectSummary,
+  Space,
+  SpaceSummary,
+  SpaceTemplate,
   Task,
   TaskComment,
   TaskEvent,
@@ -113,6 +116,14 @@ export const api = {
 
   getDashboard: () => request<Dashboard>('/dashboard'),
   getForYou: (filter: ForYouFilter) => request<ForYouResponse>(`/for-you?filter=${filter}`),
+
+  listSpaces: () => request<SpaceSummary[]>('/spaces'),
+  listSpaceTemplates: () => request<SpaceTemplate[]>('/spaces/templates'),
+  getSpace: (id: string) => request<Space>(`/spaces/${id}`),
+  createSpace: (input: { name: string; description: string | null; templateKey: string }) =>
+    request<Space>('/spaces', 'POST', input),
+  updateSpace: (id: string, input: { name: string; description: string | null }) => request<Space>(`/spaces/${id}`, 'PUT', input),
+  deleteSpace: (id: string) => request<void>(`/spaces/${id}`, 'DELETE'),
 
   listGoals: () => request<Goal[]>('/goals'),
   createGoal: (input: GoalInput) => request<Goal>('/goals', 'POST', input),

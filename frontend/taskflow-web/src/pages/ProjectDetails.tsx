@@ -40,6 +40,8 @@ export function ProjectDetails() {
     [id],
   )
   const { user } = useAuth()
+  // Para o formulário de edição: espaços que eu criei, onde posso colocar o projeto.
+  const { data: spaces } = useAsync(api.listSpaces, [])
   const [editing, setEditing] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
@@ -119,14 +121,16 @@ export function ProjectDetails() {
 
   return (
     <>
-      <Link to="/projects" className="back-link">
+      {/* Projeto dentro de um espaço volta para o espaço; projeto avulso volta para o diretório. */}
+      <Link to={project.spaceId ? `/spaces/${project.spaceId}` : '/projects'} className="back-link">
         <ArrowLeftIcon size={14} weight="bold" aria-hidden="true" />
-        Projetos
+        {project.spaceName ?? 'Projetos'}
       </Link>
 
       {editing ? (
         <ProjectForm
-          initial={{ name: project.name, description: project.description }}
+          initial={{ name: project.name, description: project.description, spaceId: project.spaceId }}
+          spaces={(spaces ?? []).filter((s) => s.ownerId === user?.id)}
           submitLabel="Salvar"
           onSubmit={updateProject}
           onCancel={() => setEditing(false)}

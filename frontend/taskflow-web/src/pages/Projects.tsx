@@ -32,6 +32,9 @@ export function Projects() {
   const [term, setTerm] = useState(search)
 
   const { data, loading, error, reload, setData } = useAsync(() => api.listProjects(scope, search), [scope, search])
+  // Espaços que eu criei: são os únicos em que posso colocar um projeto.
+  const { data: spaces } = useAsync(api.listSpaces, [])
+  const ownSpaces = (spaces ?? []).filter((s) => s.ownerId === user?.id)
   // ?help=1 (link do dashboard) já abre a explicação de como funcionam os projetos.
   const [help, setHelp] = useState<'empty' | 'help' | null>(params.has('help') ? 'help' : null)
   const [emptyDismissed, setEmptyDismissed] = useState(false)
@@ -126,7 +129,16 @@ export function Projects() {
         </div>
       </header>
 
-      {creating && <ProjectForm submitLabel="Criar projeto" onSubmit={create} onCancel={() => setParam('new', null)} />}
+      {/* ?space= vem do botão "Novo projeto" de dentro de um espaço: o formulário já abre com ele escolhido. */}
+      {creating && (
+        <ProjectForm
+          spaces={ownSpaces}
+          defaultSpaceId={params.get('space')}
+          submitLabel="Criar projeto"
+          onSubmit={create}
+          onCancel={() => setParam('new', null)}
+        />
+      )}
 
       <section aria-labelledby="directory-title">
         <h2 id="directory-title" className="directory__title">
@@ -182,6 +194,7 @@ export function Projects() {
               <thead>
                 <tr>
                   <th scope="col">Nome</th>
+                  <th scope="col">Espaço</th>
                   <th scope="col">Status</th>
                   <th scope="col">Dono</th>
                   <th scope="col">Progresso</th>
@@ -206,6 +219,15 @@ export function Projects() {
                             <span className="directory__key">{projectKey(project.name)}</span>
                           </span>
                         </Link>
+                      </td>
+                      <td>
+                        {project.spaceId ? (
+                          <Link to={`/spaces/${project.spaceId}`} className="directory__space">
+                            {project.spaceName}
+                          </Link>
+                        ) : (
+                          <span className="muted">Sem espaço</span>
+                        )}
                       </td>
                       <td>
                         {isOwner && !project.archived ? (

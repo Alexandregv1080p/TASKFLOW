@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 export const SIDEBAR_SECTIONS = [
   { key: 'recent', label: 'Recentes', description: 'Atalho para as tarefas que você abriu por último.' },
   { key: 'starred', label: 'Com estrela', description: 'Atalho para as tarefas que você marcou com estrela.' },
+  { key: 'spaces', label: 'Espaços', description: 'Espaços que agrupam projetos, com os mais recentes.' },
   { key: 'projects', label: 'Projetos', description: 'Diretório de projetos e os projetos mais recentes.' },
   { key: 'goals', label: 'Metas', description: 'Seus objetivos e o progresso de cada um.' },
   { key: 'dashboards', label: 'Dashboards', description: 'Painéis com os números e as tarefas atribuídas a você.' },

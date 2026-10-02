@@ -127,6 +127,15 @@ function HowProjectsWork() {
       </section>
 
       <section>
+        <h3>Espaços</h3>
+        <p>
+          Um <strong>espaço</strong> fica um nível acima: ele agrupa os projetos de uma mesma área ou time, como Marketing
+          ou Engenharia. Um projeto pode pertencer a um espaço ou ficar avulso. Ao criar um espaço você escolhe um modelo
+          (Kanban, Scrum, Roadmap de produto e outros), que já traz projetos e tarefas iniciais, ou começa em branco.
+        </p>
+      </section>
+
+      <section>
         <h3>Status do projeto</h3>
         <p>
           O dono informa como o projeto está indo: <strong>No prazo</strong>, <strong>Em risco</strong>,{' '}

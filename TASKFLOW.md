@@ -2098,6 +2098,7 @@ Decisões:
 * [x] Compartilhamento de projetos com papéis de dono e membro (seção 34)
 * [x] Página "Para você" e diretório de projetos, no visual do Jira (além da spec original)
 * [x] Metas, dashboard em painéis e barra lateral personalizável (além da spec original)
+* [x] Espaços (nível acima dos projetos) com galeria de modelos (além da spec original)
 
 ### Para você (página inicial)
 
@@ -2136,6 +2137,42 @@ POST   /api/projects/{id}/archive    POST /api/projects/{id}/restore
 * **Arquivar:** o projeto sai das listas, do dashboard e do "Para você" e fica **somente leitura** (criar, alterar, mover, comentar e excluir tarefas respondem 400); nada é apagado e o dono pode restaurar. Estrela e "visto" continuam funcionando, por serem pessoais. Status e arquivamento são ações só do dono (403 para membros).
 * **Sem projetos:** ao entrar em Projetos sem ter nenhum, abre o modal "Você ainda não tem projetos para mostrar", com "Criar projeto" e "Mais sobre como funcionam os projetos", que mostra o texto de ajuda (o que é um projeto, o que se faz nele, pessoas, status e diretório). O mesmo texto fica sempre acessível pelo botão "Como funcionam os projetos".
 
+### Espaços
+
+Um **espaço** fica um nível acima dos projetos: agrupa os projetos de uma mesma área ou time (ex.: "Marketing", "Engenharia").
+
+```text
+Espaço ──► Projeto ──► Tarefa
+           (um projeto pode ficar sem espaço)
+```
+
+```http
+GET    /api/spaces                 → espaços que criei ou que têm projeto a que tenho acesso
+GET    /api/spaces/templates       → galeria de modelos
+GET    /api/spaces/{id}            → espaço + projetos dele que consigo ver
+POST   /api/spaces                 { "name", "description", "templateKey" }  → 201
+PUT    /api/spaces/{id}            { "name", "description" }
+DELETE /api/spaces/{id}            → 204
+GET    /api/projects?spaceId=...   → diretório filtrado por espaço
+```
+
+`POST`/`PUT /api/projects` aceitam `spaceId` (nulo = sem espaço). Como o `PUT` substitui o projeto inteiro, omitir `spaceId` tira o projeto do espaço.
+
+* **Projeto sem espaço continua válido** (`Project.SpaceId` é opcional): os projetos anteriores à funcionalidade seguem funcionando e podem ser movidos depois, pelo formulário de edição.
+* **Acesso:**
+
+| Ação | Dono do espaço | Quem participa de um projeto do espaço | Demais |
+| --- | --- | --- | --- |
+| Ver o espaço | sim, com todos os projetos | sim, só com os projetos a que tem acesso | não (404) |
+| Editar ou excluir o espaço | sim | não (403) | não (404) |
+| Colocar projeto no espaço | sim (projetos dele) | não | não |
+
+* Não há "membros de espaço": o compartilhamento continua sendo por projeto. Um projeto só entra em espaço do próprio dono, então um espaço só contém projetos de quem o criou.
+* **Excluir um espaço não apaga os projetos:** a FK usa `SET NULL` e eles voltam a ficar sem espaço.
+* **Modelos:** catálogo fixo em código (`SpaceTemplateCatalog`): Espaço em branco, Kanban, Scrum, Solicitações de desenvolvimento, Roadmap de produto, Campanha de marketing, Integração de novas pessoas e Organização pessoal. Criar a partir de um modelo gera o espaço, os projetos e as tarefas iniciais (numeradas, com criador e evento de criação no histórico) em uma única transação. Um teste garante que todo texto do catálogo cabe nas regras do domínio.
+* **Frontend:** `/spaces` (lista), `/spaces/new` (galeria no formato da tela de modelos do Jira: "Feitos para você" e categorias à esquerda, cartões à direita com a prévia dos projetos que serão criados) e `/spaces/:id` (projetos do espaço, "Novo projeto" já com o espaço escolhido). O menu ganhou a seção Espaços, com os recentes e o botão "+". O diretório de projetos ganhou a coluna Espaço, e o projeto dentro de um espaço volta para ele pelo link de retorno.
+* **Para você:** "Espaços recomendados" mostra os 3 espaços mais recentes; quem ainda só tem projetos avulsos vê "Projetos recomendados".
+
 ### Metas
 
 ```http
@@ -2163,7 +2200,7 @@ O botão "Personalizar barra lateral" abre um diálogo com um interruptor por se
 
 ### Layout
 
-Barra superior fixa (marca, busca de projetos, botão "Criar", usuário) + menu lateral (Para você, Recentes, Com estrela, Projetos com os recentes, Metas, Dashboards). Rotas: `/` Para você, `/projects` diretório, `/projects/:id` quadro, `/projects/:id/tasks/:taskId` detalhe da tarefa, `/goals` metas, `/dashboard` dashboard padrão. Paleta: fundo branco, neutros frios e azul como único acento; ícones de projeto com cor derivada do nome.
+Barra superior fixa (marca, busca de projetos, botão "Criar", usuário) + menu lateral (Para você, Recentes, Com estrela, Espaços com os recentes, Projetos com os recentes, Metas, Dashboards). Rotas: `/` Para você, `/spaces` espaços, `/spaces/new` modelos, `/spaces/:id` espaço, `/projects` diretório, `/projects/:id` quadro, `/projects/:id/tasks/:taskId` detalhe da tarefa, `/goals` metas, `/dashboard` dashboard padrão. Paleta: fundo branco, neutros frios e azul como único acento; ícones de projeto com cor derivada do nome.
 
 Comentários:
 
