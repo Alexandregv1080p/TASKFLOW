@@ -2099,6 +2099,7 @@ Decisões:
 * [x] Página "Para você" e diretório de projetos, no visual do Jira (além da spec original)
 * [x] Metas, dashboard em painéis e barra lateral personalizável (além da spec original)
 * [x] Espaços (nível acima dos projetos) com galeria de modelos (além da spec original)
+* [x] Quadro em tempo real com SignalR (além da spec original)
 
 ### Para você (página inicial)
 
@@ -2197,6 +2198,23 @@ A seção "Dashboards" do menu tem o **Dashboard padrão** (`/dashboard`), em pa
 O botão "Personalizar barra lateral" abre um diálogo com um interruptor por seção: Recentes, Com estrela, Projetos, Metas e Dashboards. "Para você" é fixa, para o menu nunca ficar vazio. A mudança vale na hora; esconder uma seção só a tira do menu, a página continua acessível pelo endereço. A preferência é de interface e fica no navegador (`localStorage`, uma chave por usuário): não acompanha a pessoa em outro aparelho. Passaria para a API se isso virasse necessidade.
 
 "Recentes" e "Com estrela" são atalhos para as abas Visto e Com estrela da página Para você, cuja aba agora vive na URL (`/?filter=Viewed`).
+
+### Tempo real (SignalR)
+
+Quem está com o quadro de um projeto aberto vê na hora o que outra pessoa faz nele: card criado, movido, editado ou excluído, comentário, responsável, pessoas do projeto, status e arquivamento. O indicador "Ao vivo" aparece ao lado do progresso enquanto a conexão está ativa.
+
+```text
+WS /hubs/board          (JWT obrigatório)
+  → JoinProject(projectId)                 entra no grupo do projeto (dono ou membro; senão erro)
+  ← BoardChanged { projectId, taskId }     algo mudou no projeto
+```
+
+* **O aviso não leva dados.** O servidor só diz "mudou"; o cliente recarrega pela API REST, que já aplica as regras de acesso. Não existe um segundo caminho de leitura para proteger nem um segundo formato de dados para manter.
+* **Camadas:** os services chamam `IBoardNotifier` (Application) depois do `SaveChanges`; a implementação com `IHubContext` fica na API. Falhar ao avisar só gera log: a alteração já foi gravada.
+* **Autenticação:** mesmo JWT do REST. No WebSocket o navegador não envia o header `Authorization`, então o token vai na query (`access_token`), aceita só em `/hubs`; o nginx não registra essas URLs no log de acesso.
+* **Frontend:** hook `useBoardLive` (uma conexão por quadro aberto, reconexão automática; ao reconectar entra de novo no grupo e recarrega). O modal da tarefa recarrega a atividade sem perder o que a pessoa está digitando. Sem conexão, o quadro funciona como antes, só não atualiza sozinho.
+* **Limites conhecidos:** grupos em memória servem para uma instância da API (várias réplicas pedem backplane Redis); quem é removido do projeto continua no grupo até fechar a página, recebendo só ids (o recarregamento dele responde 404); quem fez a alteração também recebe o aviso e faz uma leitura a mais; a conexão aberta não é derrubada quando o token expira.
+* **Testes:** `BoardHubTests` (aviso chega a quem entrou no quadro, quem não é do projeto não entra, hub exige autenticação).
 
 ### Layout
 

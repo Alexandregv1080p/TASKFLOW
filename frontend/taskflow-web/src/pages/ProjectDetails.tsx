@@ -16,6 +16,7 @@ import { ProjectAvatar } from '../components/ProjectAvatar'
 import { ProjectForm } from '../components/ProjectForm'
 import { ProjectMembersDialog } from '../components/ProjectMembersDialog'
 import { useAsync } from '../hooks/useAsync'
+import { useBoardLive } from '../hooks/useBoardLive'
 import { api } from '../services/api'
 import type { Project, ProjectInput, ProjectStatus, Task, TaskInput, TaskStatus, UserSummary } from '../types'
 import { PROJECT_STATUSES, PROJECT_STATUS_LABEL, projectKey } from '../utils/format'
@@ -30,6 +31,8 @@ export interface ProjectOutletContext {
   readOnly: boolean
   replaceTask: (task: Task) => void
   removeTask: (id: string) => void
+  // Sobe a cada alteração feita por outra pessoa: o modal recarrega a atividade.
+  liveVersion: number
 }
 
 export function ProjectDetails() {
@@ -40,6 +43,12 @@ export function ProjectDetails() {
     [id],
   )
   const { user } = useAuth()
+  // Outra pessoa mexeu no projeto: recarrega o quadro sem tirar nada da tela.
+  const [liveVersion, setLiveVersion] = useState(0)
+  const live = useBoardLive(id, () => {
+    reload()
+    setLiveVersion((v) => v + 1)
+  })
   // Para o formulário de edição: espaços que eu criei, onde posso colocar o projeto.
   const { data: spaces } = useAsync(api.listSpaces, [])
   const [editing, setEditing] = useState(false)
@@ -117,7 +126,7 @@ export function ProjectDetails() {
     }, task.id)
   }
 
-  const outletContext: ProjectOutletContext = { project, tasks, users, keyPrefix, readOnly: archived, replaceTask, removeTask }
+  const outletContext: ProjectOutletContext = { project, tasks, users, keyPrefix, readOnly: archived, replaceTask, removeTask, liveVersion }
 
   return (
     <>
@@ -230,6 +239,12 @@ export function ProjectDetails() {
         <div className="progress" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={tasks.length}>
           <div className="progress__bar" style={{ transform: `scaleX(${tasks.length ? done / tasks.length : 0})` }} />
         </div>
+        {live && (
+          <span className="live" title="Alterações de outras pessoas aparecem aqui na hora">
+            <span className="live__dot" aria-hidden="true" />
+            Ao vivo
+          </span>
+        )}
       </div>
 
       {actionError && <ErrorMessage message={actionError} />}

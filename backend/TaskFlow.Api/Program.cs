@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Prometheus;
 using TaskFlow.Api;
+using TaskFlow.Api.Hubs;
 using TaskFlow.Api.Middlewares;
 using TaskFlow.Application;
 using TaskFlow.Application.Common;
@@ -40,6 +41,10 @@ builder.Services.AddInfrastructure(connectionString, jwt);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
+// Tempo real do quadro (ver BoardHub).
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IBoardNotifier, SignalRBoardNotifier>();
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -55,6 +60,14 @@ builder.Services
         };
         o.Events = new JwtBearerEvents
         {
+            // WebSocket no navegador não envia o header Authorization: o cliente SignalR manda o token na query.
+            OnMessageReceived = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/hubs") && context.Request.Query["access_token"] is { Count: > 0 } token)
+                    context.Token = token.ToString();
+
+                return Task.CompletedTask;
+            },
             // 401 no mesmo formato de erro do resto da API.
             OnChallenge = async context =>
             {
@@ -136,6 +149,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<BoardHub>("/hubs/board");
 
 // /metrics para o Prometheus. Com Metrics:Port definido (Docker), só responde nessa porta interna,
 // que não é publicada no host nem passa pelo nginx. As métricas de negócio (TaskFlowMetrics) e as do

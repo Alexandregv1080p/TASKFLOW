@@ -24,7 +24,7 @@ export function TaskDetail() {
   const { taskId = '' } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { project, tasks, users, keyPrefix, readOnly, replaceTask, removeTask } = useOutletContext<ProjectOutletContext>()
+  const { project, tasks, users, keyPrefix, readOnly, replaceTask, removeTask, liveVersion } = useOutletContext<ProjectOutletContext>()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [saving, setSaving] = useState(false)
   // Campos travados enquanto salva ou quando o projeto está arquivado.
@@ -190,7 +190,7 @@ export function TaskDetail() {
 
               <section className="task-detail__section">
                 <h3>Atividade</h3>
-                <TaskActivity taskId={task.id} version={version} users={users} currentUserId={user?.id} readOnly={readOnly} />
+                <TaskActivity taskId={task.id} version={version + liveVersion} users={users} currentUserId={user?.id} readOnly={readOnly} />
               </section>
             </div>
 

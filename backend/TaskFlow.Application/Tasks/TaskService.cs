@@ -9,7 +9,7 @@ namespace TaskFlow.Application.Tasks;
 
 // Tarefas só são acessíveis através de projetos em que o usuário atual é dono ou membro.
 // Em projeto arquivado, as tarefas ficam somente leitura (estrela e "visto" são pessoais e continuam valendo).
-public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<TaskService> logger)
+public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<TaskService> logger, IBoardNotifier? board = null)
 {
     public async Task<TaskResponse> CreateAsync(Guid projectId, CreateTaskRequest request, CancellationToken ct = default)
     {
@@ -29,6 +29,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
 
         logger.LogInformation("TaskCreated {TaskId} {ProjectId} {UserId}", task.Id, projectId, currentUser.UserId);
         TaskFlowMetrics.TasksCreated.Add(1);
+        await board.ChangedAsync(projectId, task.Id);
 
         return TaskResponse.From(task, starred: false);
     }
@@ -74,6 +75,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
             Record(task, TaskEventType.DueDateChanged, FormatDate(dueDate), FormatDate(task.DueDate));
 
         await db.SaveChangesAsync(ct);
+        await board.ChangedAsync(task.ProjectId, task.Id);
 
         return await ResponseAsync(task, ct);
     }
@@ -91,8 +93,11 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        db.Tasks.Remove(await FindForWriteAsync(id, ct));
+        var task = await FindForWriteAsync(id, ct);
+
+        db.Tasks.Remove(task);
         await db.SaveChangesAsync(ct);
+        await board.ChangedAsync(task.ProjectId, task.Id);
     }
 
     public async Task<TaskResponse> ChangeStatusAsync(Guid id, ChangeTaskStatusRequest request, CancellationToken ct = default)
@@ -106,6 +111,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
             Record(task, TaskEventType.StatusChanged, oldStatus.ToString(), task.Status.ToString());
 
         await db.SaveChangesAsync(ct);
+        await board.ChangedAsync(task.ProjectId, task.Id);
 
         if (oldStatus != task.Status)
         {
@@ -141,6 +147,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
             Record(task, TaskEventType.AssigneeChanged, oldAssignee?.ToString(), task.AssignedToId?.ToString());
 
         await db.SaveChangesAsync(ct);
+        await board.ChangedAsync(task.ProjectId, task.Id);
 
         return await ResponseAsync(task, ct);
     }
@@ -198,6 +205,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("CommentAdded {CommentId} {TaskId} {UserId}", comment.Id, task.Id, currentUser.UserId);
+        await board.ChangedAsync(task.ProjectId, task.Id);
 
         return TaskCommentResponse.From(comment);
     }
@@ -213,10 +221,11 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
                 ct)
             ?? throw new NotFoundException(nameof(TaskComment), commentId);
 
-        await FindForWriteAsync(comment.TaskId, ct);
+        var task = await FindForWriteAsync(comment.TaskId, ct);
 
         db.TaskComments.Remove(comment);
         await db.SaveChangesAsync(ct);
+        await board.ChangedAsync(task.ProjectId, task.Id);
     }
 
     // O evento entra no mesmo SaveChanges da alteração: ou os dois são gravados, ou nenhum.

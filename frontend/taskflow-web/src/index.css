@@ -899,6 +899,25 @@ textarea {
   font-weight: 600;
 }
 
+/* Indicador de tempo real do quadro. */
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--done);
+  white-space: nowrap;
+}
+
+.live__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
 /* Kanban */
 
 .kanban {
