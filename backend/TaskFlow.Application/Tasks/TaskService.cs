@@ -9,7 +9,7 @@ namespace TaskFlow.Application.Tasks;
 
 // Tarefas só são acessíveis através de projetos em que o usuário atual é dono ou membro.
 // Em projeto arquivado, as tarefas ficam somente leitura (estrela e "visto" são pessoais e continuam valendo).
-public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<TaskService> logger, IBoardNotifier? board = null)
+public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<TaskService> logger, ILiveNotifier? live = null)
 {
     public async Task<TaskResponse> CreateAsync(Guid projectId, CreateTaskRequest request, CancellationToken ct = default)
     {
@@ -29,7 +29,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
 
         logger.LogInformation("TaskCreated {TaskId} {ProjectId} {UserId}", task.Id, projectId, currentUser.UserId);
         TaskFlowMetrics.TasksCreated.Add(1);
-        await board.ChangedAsync(projectId, task.Id);
+        await live.ChangedAsync(projectId, task.Id);
 
         return TaskResponse.From(task, starred: false);
     }
@@ -75,7 +75,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
             Record(task, TaskEventType.DueDateChanged, FormatDate(dueDate), FormatDate(task.DueDate));
 
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(task.ProjectId, task.Id);
+        await live.ChangedAsync(task.ProjectId, task.Id);
 
         return await ResponseAsync(task, ct);
     }
@@ -97,7 +97,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
 
         db.Tasks.Remove(task);
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(task.ProjectId, task.Id);
+        await live.ChangedAsync(task.ProjectId, task.Id);
     }
 
     public async Task<TaskResponse> ChangeStatusAsync(Guid id, ChangeTaskStatusRequest request, CancellationToken ct = default)
@@ -111,7 +111,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
             Record(task, TaskEventType.StatusChanged, oldStatus.ToString(), task.Status.ToString());
 
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(task.ProjectId, task.Id);
+        await live.ChangedAsync(task.ProjectId, task.Id);
 
         if (oldStatus != task.Status)
         {
@@ -143,11 +143,19 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
             task.AssignTo(userId);
         }
 
+        Guid[] notified = [];
+
         if (task.AssignedToId != oldAssignee)
+        {
             Record(task, TaskEventType.AssigneeChanged, oldAssignee?.ToString(), task.AssignedToId?.ToString());
 
+            if (task.AssignedToId is { } assignee)
+                notified = Notify(task, NotificationType.Assigned, [assignee]);
+        }
+
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(task.ProjectId, task.Id);
+        await live.ChangedAsync(task.ProjectId, task.Id);
+        await live.NotifiedAsync(notified);
 
         return await ResponseAsync(task, ct);
     }
@@ -202,10 +210,31 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         var comment = new TaskComment(task.Id, currentUser.UserId, request.Body);
 
         db.TaskComments.Add(comment);
+
+        // Menção: "@Nome" de alguém do projeto no texto. Responsável e criador são avisados de qualquer
+        // comentário; quem foi mencionado recebe só o aviso de menção.
+        // ponytail: casa pelo nome completo dentro do texto, então "@Ana Paula" também avisa uma "Ana" do mesmo
+        // projeto. Para precisão, o cliente enviaria os ids mencionados junto com o comentário.
+        var people = await db.Users
+            .Where(u => db.Projects.Any(p => p.Id == task.ProjectId && p.OwnerId == u.Id)
+                || db.ProjectMembers.Any(m => m.ProjectId == task.ProjectId && m.UserId == u.Id))
+            .Select(u => new { u.Id, u.Name })
+            .ToListAsync(ct);
+        var mentioned = people
+            .Where(p => comment.Body.Contains('@' + p.Name, StringComparison.OrdinalIgnoreCase))
+            .Select(p => p.Id)
+            .ToList();
+        var watchers = new[] { task.AssignedToId, task.CreatedById }
+            .OfType<Guid>()
+            .Where(id => !mentioned.Contains(id) && people.Any(p => p.Id == id));
+        Guid[] notified =
+            [.. Notify(task, NotificationType.Mentioned, mentioned), .. Notify(task, NotificationType.Commented, watchers)];
+
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("CommentAdded {CommentId} {TaskId} {UserId}", comment.Id, task.Id, currentUser.UserId);
-        await board.ChangedAsync(task.ProjectId, task.Id);
+        await live.ChangedAsync(task.ProjectId, task.Id);
+        await live.NotifiedAsync(notified);
 
         return TaskCommentResponse.From(comment);
     }
@@ -225,12 +254,24 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
 
         db.TaskComments.Remove(comment);
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(task.ProjectId, task.Id);
+        await live.ChangedAsync(task.ProjectId, task.Id);
     }
 
     // O evento entra no mesmo SaveChanges da alteração: ou os dois são gravados, ou nenhum.
     private void Record(TaskItem task, TaskEventType type, string? oldValue = null, string? newValue = null) =>
         db.TaskEvents.Add(new TaskEvent(task.Id, currentUser.UserId, type, oldValue, newValue));
+
+    // Cria as notificações no mesmo SaveChanges da ação e devolve quem deve ser avisado em tempo real.
+    // Ninguém é notificado do que ele mesmo fez.
+    private Guid[] Notify(TaskItem task, NotificationType type, IEnumerable<Guid> userIds)
+    {
+        var recipients = userIds.Where(id => id != currentUser.UserId).Distinct().ToArray();
+
+        foreach (var userId in recipients)
+            db.Notifications.Add(new Notification(userId, currentUser.UserId, task.Id, type));
+
+        return recipients;
+    }
 
     private static string? FormatDate(DateTime? date) => date?.ToString("yyyy-MM-dd");
 

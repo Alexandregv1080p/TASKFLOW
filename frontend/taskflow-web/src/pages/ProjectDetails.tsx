@@ -16,7 +16,7 @@ import { ProjectAvatar } from '../components/ProjectAvatar'
 import { ProjectForm } from '../components/ProjectForm'
 import { ProjectMembersDialog } from '../components/ProjectMembersDialog'
 import { useAsync } from '../hooks/useAsync'
-import { useBoardLive } from '../hooks/useBoardLive'
+import { useLive } from '../hooks/useLive'
 import { api } from '../services/api'
 import type { Project, ProjectInput, ProjectStatus, Task, TaskInput, TaskStatus, UserSummary } from '../types'
 import { PROJECT_STATUSES, PROJECT_STATUS_LABEL, projectKey } from '../utils/format'
@@ -45,10 +45,14 @@ export function ProjectDetails() {
   const { user } = useAuth()
   // Outra pessoa mexeu no projeto: recarrega o quadro sem tirar nada da tela.
   const [liveVersion, setLiveVersion] = useState(0)
-  const live = useBoardLive(id, () => {
-    reload()
-    setLiveVersion((v) => v + 1)
-  })
+  const live = useLive(
+    'BoardChanged',
+    () => {
+      reload()
+      setLiveVersion((v) => v + 1)
+    },
+    id,
+  )
   // Para o formulário de edição: espaços que eu criei, onde posso colocar o projeto.
   const { data: spaces } = useAsync(api.listSpaces, [])
   const [editing, setEditing] = useState(false)

@@ -1,5 +1,5 @@
 import { ArrowRightIcon, TrashIcon } from '@phosphor-icons/react'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../services/api'
 import type { TaskComment, TaskEvent, TaskPriority, TaskStatus, UserSummary } from '../types'
@@ -63,7 +63,13 @@ export function TaskActivity({ taskId, version, users, currentUserId, readOnly }
 
   return (
     <>
-      {!readOnly && <CommentComposer currentUserName={nameOf(currentUserId ?? null)} onSubmit={addComment} />}
+      {!readOnly && (
+        <CommentComposer
+          currentUserName={nameOf(currentUserId ?? null)}
+          people={users.filter((u) => u.id !== currentUserId)}
+          onSubmit={addComment}
+        />
+      )}
 
       {actionError && (
         <p className="field__error" role="alert">
@@ -88,7 +94,7 @@ export function TaskActivity({ taskId, version, users, currentUserId, readOnly }
                       <p className="activity__text">
                         <strong>{author}</strong> comentou
                       </p>
-                      <p className="activity__comment">{entry.comment.body}</p>
+                      <p className="activity__comment">{withMentions(entry.comment.body, users)}</p>
                     </>
                   ) : (
                     <p className="activity__text">
@@ -119,7 +125,36 @@ export function TaskActivity({ taskId, version, users, currentUserId, readOnly }
   )
 }
 
-function CommentComposer({ currentUserName, onSubmit }: { currentUserName?: string; onSubmit: (body: string) => Promise<void> }) {
+// Destaca "@Nome" de quem está no projeto (a mesma regra que a API usa para notificar).
+function withMentions(body: string, users: UserSummary[]): ReactNode {
+  if (users.length === 0) return body
+
+  // Nomes mais longos primeiro: "@Ana Paula" não pode casar só com "@Ana".
+  const names = users
+    .map((u) => u.name)
+    .sort((a, b) => b.length - a.length)
+    .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+
+  return body.split(new RegExp(`(@(?:${names.join('|')}))`, 'gi')).map((part, i) =>
+    i % 2 ? (
+      <span key={i} className="mention">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  )
+}
+
+interface ComposerProps {
+  currentUserName?: string
+  // Quem pode ser mencionado com @.
+  people: UserSummary[]
+  onSubmit: (body: string) => Promise<void>
+}
+
+function CommentComposer({ currentUserName, people, onSubmit }: ComposerProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [body, setBody] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string>()
@@ -140,18 +175,37 @@ function CommentComposer({ currentUserName, onSubmit }: { currentUserName?: stri
     }
   }
 
+  // Sugestões de menção: aparecem enquanto o texto termina em "@" + começo de um nome.
+  // ponytail: só no fim do texto e filtrando por um trecho sem espaço; para mencionar no meio do texto,
+  // usar a posição do cursor (selectionStart) em vez do fim.
+  const typed = /(?:^|\s)@([^\s@]*)$/.exec(body)?.[1]
+  const suggestions =
+    typed === undefined ? [] : people.filter((u) => u.name.toLowerCase().includes(typed.toLowerCase())).slice(0, 5)
+
+  function mention(user: UserSummary) {
+    setBody(`${body.slice(0, body.length - (typed ?? '').length)}${user.name} `)
+    textareaRef.current?.focus()
+  }
+
   return (
     <form className="comment-composer" onSubmit={submit}>
       <Avatar name={currentUserName ?? '?'} size="sm" />
       <div className="comment-composer__field">
         <textarea
+          ref={textareaRef}
           aria-label="Novo comentário"
-          placeholder="Adicionar um comentário…"
+          placeholder="Adicionar um comentário… Use @ para mencionar alguém"
           rows={body ? 3 : 1}
           maxLength={2000}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={(e) => {
+            // Com sugestões abertas, Enter ou Tab escolhe a primeira.
+            if (suggestions.length > 0 && (e.key === 'Tab' || (e.key === 'Enter' && !e.ctrlKey && !e.metaKey))) {
+              e.preventDefault()
+              mention(suggestions[0])
+              return
+            }
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit()
             // Esc limpa o rascunho em vez de fechar o modal inteiro.
             if (e.key === 'Escape' && body) {
@@ -160,6 +214,19 @@ function CommentComposer({ currentUserName, onSubmit }: { currentUserName?: stri
             }
           }}
         />
+
+        {suggestions.length > 0 && (
+          <ul className="mention-list" aria-label="Mencionar alguém">
+            {suggestions.map((u, i) => (
+              <li key={u.id}>
+                <button type="button" className={i === 0 ? 'mention-list__item mention-list__item--first' : 'mention-list__item'} onClick={() => mention(u)}>
+                  <Avatar name={u.name} size="sm" />
+                  {u.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {error && (
           <p className="field__error" role="alert">

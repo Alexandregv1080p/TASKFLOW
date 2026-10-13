@@ -43,7 +43,7 @@ builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
 // Tempo real do quadro (ver BoardHub).
 builder.Services.AddSignalR();
-builder.Services.AddScoped<IBoardNotifier, SignalRBoardNotifier>();
+builder.Services.AddScoped<ILiveNotifier, SignalRLiveNotifier>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

@@ -12,7 +12,7 @@ public record AddMemberRequest(string Email);
 // Sem e-mail: quem está no projeto vê só id e nome dos colegas.
 public record ProjectMemberResponse(Guid Id, string Name, bool IsOwner);
 
-public class ProjectMemberService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<ProjectMemberService> logger, IBoardNotifier? board = null)
+public class ProjectMemberService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<ProjectMemberService> logger, ILiveNotifier? live = null)
 {
     // Dono + membros: são as pessoas que podem ser responsáveis por tarefas do projeto.
     public async Task<IReadOnlyList<ProjectMemberResponse>> ListAsync(Guid projectId, CancellationToken ct = default)
@@ -43,7 +43,7 @@ public class ProjectMemberService(ITaskFlowDbContext db, ICurrentUser currentUse
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("ProjectMemberAdded {ProjectId} {MemberId} {UserId}", project.Id, user.Id, currentUser.UserId);
-        await board.ChangedAsync(project.Id);
+        await live.ChangedAsync(project.Id);
 
         return new ProjectMemberResponse(user.Id, user.Name, false);
     }
@@ -77,6 +77,6 @@ public class ProjectMemberService(ITaskFlowDbContext db, ICurrentUser currentUse
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("ProjectMemberRemoved {ProjectId} {MemberId} {UserId}", project.Id, userId, currentUser.UserId);
-        await board.ChangedAsync(project.Id);
+        await live.ChangedAsync(project.Id);
     }
 }

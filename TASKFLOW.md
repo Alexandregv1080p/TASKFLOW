@@ -2100,6 +2100,7 @@ Decisões:
 * [x] Metas, dashboard em painéis e barra lateral personalizável (além da spec original)
 * [x] Espaços (nível acima dos projetos) com galeria de modelos (além da spec original)
 * [x] Quadro em tempo real com SignalR (além da spec original)
+* [x] Notificações e menções com @, com aviso em tempo real (além da spec original)
 
 ### Para você (página inicial)
 
@@ -2210,11 +2211,36 @@ WS /hubs/board          (JWT obrigatório)
 ```
 
 * **O aviso não leva dados.** O servidor só diz "mudou"; o cliente recarrega pela API REST, que já aplica as regras de acesso. Não existe um segundo caminho de leitura para proteger nem um segundo formato de dados para manter.
-* **Camadas:** os services chamam `IBoardNotifier` (Application) depois do `SaveChanges`; a implementação com `IHubContext` fica na API. Falhar ao avisar só gera log: a alteração já foi gravada.
+* **Camadas:** os services chamam `ILiveNotifier` (Application) depois do `SaveChanges`; a implementação com `IHubContext` fica na API. Falhar ao avisar só gera log: a alteração já foi gravada.
 * **Autenticação:** mesmo JWT do REST. No WebSocket o navegador não envia o header `Authorization`, então o token vai na query (`access_token`), aceita só em `/hubs`; o nginx não registra essas URLs no log de acesso.
-* **Frontend:** hook `useBoardLive` (uma conexão por quadro aberto, reconexão automática; ao reconectar entra de novo no grupo e recarrega). O modal da tarefa recarrega a atividade sem perder o que a pessoa está digitando. Sem conexão, o quadro funciona como antes, só não atualiza sozinho.
+* **Frontend:** hook `useLive` (uma conexão por aba, compartilhada com o sino de notificações, com reconexão automática; ao reconectar entra de novo no grupo e recarrega). O modal da tarefa recarrega a atividade sem perder o que a pessoa está digitando. Sem conexão, o quadro funciona como antes, só não atualiza sozinho.
 * **Limites conhecidos:** grupos em memória servem para uma instância da API (várias réplicas pedem backplane Redis); quem é removido do projeto continua no grupo até fechar a página, recebendo só ids (o recarregamento dele responde 404); quem fez a alteração também recebe o aviso e faz uma leitura a mais; a conexão aberta não é derrubada quando o token expira.
 * **Testes:** `BoardHubTests` (aviso chega a quem entrou no quadro, quem não é do projeto não entra, hub exige autenticação).
+
+### Notificações e menções
+
+O sino da barra superior avisa quando outra pessoa faz algo que diz respeito a você. O contador de não lidas sobe na hora, sem recarregar a página.
+
+| Tipo | Quando | Quem recebe |
+| --- | --- | --- |
+| `Assigned` | uma tarefa é atribuída | o novo responsável |
+| `Mentioned` | um comentário traz `@Nome` | cada pessoa do projeto mencionada |
+| `Commented` | um comentário é feito na tarefa | responsável e criador, se não foram mencionados |
+
+```http
+GET  /api/notifications            → { "unreadCount": 2, "items": [ ...30 mais recentes ] }
+POST /api/notifications/{id}/read  → 204
+POST /api/notifications/read-all   → 204
+```
+
+* **Ninguém é avisado do que ele mesmo fez.** Quem é mencionado recebe só a menção, não os dois avisos.
+* **Mesma transação:** as notificações entram no `SaveChanges` da ação que as gera (`TaskService`); ou as duas coisas são gravadas, ou nenhuma.
+* **Menção:** o texto do comentário contém `@` + nome de alguém do projeto, sem diferenciar maiúsculas. No formulário, digitar `@` sugere as pessoas do projeto (Enter ou Tab escolhe a primeira) e o nome aparece destacado no comentário.
+* **Acesso:** cada pessoa só vê as próprias notificações, e só de projetos a que ainda tem acesso; a de outra pessoa responde 404. Excluir a tarefa apaga as notificações dela.
+* **Tempo real:** toda conexão do hub entra no grupo da própria pessoa (`user:{id}`) e recebe o evento `Notified`, sem dados; o sino recarrega pela API.
+* **Frontend:** o painel é um popover nativo (`popover`), que fecha com Esc ou clique fora. Clicar em um aviso abre a tarefa e marca como lido.
+* **Limites conhecidos:** a menção casa pelo nome, então duas pessoas em que um nome contém o outro ("Ana" e "Ana Paula") são avisadas juntas; a sugestão de `@` só funciona no fim do texto; a lista traz as 30 mais recentes, sem paginação nem expiração; não há aviso por e-mail.
+* **Testes:** `NotificationTests` (atribuição, menção e comentário, leitura, isolamento entre usuários, saída do projeto e chegada em tempo real).
 
 ### Layout
 

@@ -29,5 +29,7 @@ public interface ITaskFlowDbContext
 
     DbSet<GoalProject> GoalProjects { get; }
 
+    DbSet<Notification> Notifications { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

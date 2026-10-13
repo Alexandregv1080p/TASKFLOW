@@ -5,6 +5,7 @@ import type {
   ForYouResponse,
   Goal,
   GoalInput,
+  NotificationList,
   Project,
   ProjectInput,
   ProjectMember,
@@ -116,6 +117,10 @@ export const api = {
 
   getDashboard: () => request<Dashboard>('/dashboard'),
   getForYou: (filter: ForYouFilter) => request<ForYouResponse>(`/for-you?filter=${filter}`),
+
+  listNotifications: () => request<NotificationList>('/notifications'),
+  markNotificationRead: (id: string) => request<void>(`/notifications/${id}/read`, 'POST'),
+  markAllNotificationsRead: () => request<void>('/notifications/read-all', 'POST'),
 
   listSpaces: () => request<SpaceSummary[]>('/spaces'),
   listSpaceTemplates: () => request<SpaceTemplate[]>('/spaces/templates'),

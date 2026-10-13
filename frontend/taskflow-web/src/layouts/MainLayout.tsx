@@ -17,6 +17,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { Avatar } from '../components/Avatar'
+import { NotificationBell } from '../components/NotificationBell'
 import { ProjectAvatar } from '../components/ProjectAvatar'
 import { SidebarCustomizeDialog } from '../components/SidebarCustomizeDialog'
 import { useAsync } from '../hooks/useAsync'
@@ -81,6 +82,7 @@ export function MainLayout() {
 
         {user && (
           <div className="topbar__user">
+            <NotificationBell />
             <Avatar name={user.name} />
             <span className="topbar__user-name">{user.name}</span>
             <button className="icon-btn" onClick={logout} aria-label="Sair" title="Sair">

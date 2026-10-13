@@ -182,6 +182,27 @@ export interface TaskComment {
   createdAt: string
 }
 
+export type NotificationType = 'Assigned' | 'Mentioned' | 'Commented'
+
+// "App" no nome para não colidir com o Notification global do navegador.
+export interface AppNotification {
+  id: string
+  type: NotificationType
+  actorName: string
+  taskId: string
+  projectId: string
+  projectName: string
+  taskNumber: number
+  taskTitle: string
+  createdAt: string
+  read: boolean
+}
+
+export interface NotificationList {
+  unreadCount: number
+  items: AppNotification[]
+}
+
 export interface Dashboard {
   totalProjects: number
   totalTasks: number

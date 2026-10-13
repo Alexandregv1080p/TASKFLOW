@@ -7,7 +7,7 @@ using TaskFlow.Domain.Enums;
 namespace TaskFlow.Application.Projects;
 
 // Acesso conforme ProjectAccess: dono e membros leem; só o dono altera, arquiva e exclui.
-public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<ProjectService> logger, IBoardNotifier? board = null)
+public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<ProjectService> logger, ILiveNotifier? live = null)
 {
     public async Task<ProjectResponse> CreateAsync(CreateProjectRequest request, CancellationToken ct = default)
     {
@@ -92,7 +92,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
         }
 
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(id);
+        await live.ChangedAsync(id);
 
         return await ResponseAsync(project, ct);
     }
@@ -104,7 +104,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
 
         project.ChangeStatus(request.Status);
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(id);
+        await live.ChangedAsync(id);
 
         logger.LogInformation(
             "ProjectStatusChanged {ProjectId} {OldStatus} {NewStatus} {UserId}", id, oldStatus, project.Status, currentUser.UserId);
@@ -118,7 +118,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
 
         project.Archive();
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(id);
+        await live.ChangedAsync(id);
 
         logger.LogInformation("ProjectArchived {ProjectId} {UserId}", id, currentUser.UserId);
 
@@ -131,7 +131,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
 
         project.Restore();
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(id);
+        await live.ChangedAsync(id);
 
         logger.LogInformation("ProjectRestored {ProjectId} {UserId}", id, currentUser.UserId);
 
@@ -142,7 +142,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
     {
         db.Projects.Remove(await db.FindOwnedProjectAsync(currentUser.UserId, id, ct));
         await db.SaveChangesAsync(ct);
-        await board.ChangedAsync(id);
+        await live.ChangedAsync(id);
 
         logger.LogInformation("ProjectDeleted {ProjectId} {UserId}", id, currentUser.UserId);
     }

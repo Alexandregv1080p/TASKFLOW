@@ -3,6 +3,7 @@ using TaskFlow.Application.Auth;
 using TaskFlow.Application.Dashboard;
 using TaskFlow.Application.ForYou;
 using TaskFlow.Application.Goals;
+using TaskFlow.Application.Notifications;
 using TaskFlow.Application.Projects;
 using TaskFlow.Application.Spaces;
 using TaskFlow.Application.Tasks;
@@ -21,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<DashboardService>();
         services.AddScoped<ForYouService>();
         services.AddScoped<GoalService>();
+        services.AddScoped<NotificationService>();
 
         return services;
     }
