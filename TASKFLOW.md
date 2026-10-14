@@ -2101,6 +2101,7 @@ Decisões:
 * [x] Espaços (nível acima dos projetos) com galeria de modelos (além da spec original)
 * [x] Quadro em tempo real com SignalR (além da spec original)
 * [x] Notificações e menções com @, com aviso em tempo real (além da spec original)
+* [x] Busca global com Ctrl+K (além da spec original)
 
 ### Para você (página inicial)
 
@@ -2242,9 +2243,25 @@ POST /api/notifications/read-all   → 204
 * **Limites conhecidos:** a menção casa pelo nome, então duas pessoas em que um nome contém o outro ("Ana" e "Ana Paula") são avisadas juntas; a sugestão de `@` só funciona no fim do texto; a lista traz as 30 mais recentes, sem paginação nem expiração; não há aviso por e-mail.
 * **Testes:** `NotificationTests` (atribuição, menção e comentário, leitura, isolamento entre usuários, saída do projeto e chegada em tempo real).
 
+### Busca global (Ctrl+K)
+
+`Ctrl+K` (`⌘K` no Mac), ou o campo "Buscar" da barra superior, abre uma paleta que procura tarefas, projetos e espaços de uma vez. O teclado faz tudo: as setas escolhem o resultado, Enter abre e Esc fecha.
+
+```http
+GET /api/search?q=revis   → { "tasks": [...8], "projects": [...5], "spaces": [...5] }
+```
+
+* **O que casa:** um trecho do título da tarefa ou do nome do projeto ou espaço, sem diferenciar maiúsculas. Um número ("12", "#12") ou uma chave ("WEB-12") também acha a tarefa pelo número. A sigla é derivada do nome do projeto e não fica no banco, então a API casa o número e a paleta filtra pela sigla.
+* **Ordem:** tarefas abertas antes das concluídas, depois as mais recentes; projetos ativos antes dos arquivados.
+* **Acesso:** só o que a pessoa já pode ver (`AccessibleProjects` e `AccessibleSpaces`, agora em `ProjectAccess`). Projeto de outra pessoa não aparece.
+* **Custo:** termo com menos de 2 letras (e sem número) não consulta a API, e a paleta espera 150 ms de pausa na digitação. Resposta de um termo antigo é descartada.
+* **Acessibilidade:** padrão combobox + listbox (`aria-activedescendant`); o foco fica no campo enquanto as setas movem a opção ativa.
+* **Limites conhecidos:** a busca não ignora acentos ("revisao" não acha "Revisão"); é `LIKE '%termo%'`, que varre as tabelas (com volume real, índice trigram `pg_trgm` ou full-text do PostgreSQL); a descrição da tarefa não entra na busca. A busca do diretório de projetos continua existindo na própria página.
+* **Testes:** `SearchTests` (tarefas, projetos e espaços; busca por número e chave; termo curto; nada de projetos de outras pessoas).
+
 ### Layout
 
-Barra superior fixa (marca, busca de projetos, botão "Criar", usuário) + menu lateral (Para você, Recentes, Com estrela, Espaços com os recentes, Projetos com os recentes, Metas, Dashboards). Rotas: `/` Para você, `/spaces` espaços, `/spaces/new` modelos, `/spaces/:id` espaço, `/projects` diretório, `/projects/:id` quadro, `/projects/:id/tasks/:taskId` detalhe da tarefa, `/goals` metas, `/dashboard` dashboard padrão. Paleta: fundo branco, neutros frios e azul como único acento; ícones de projeto com cor derivada do nome.
+Barra superior fixa (marca, busca global Ctrl+K, botão "Criar", usuário) + menu lateral (Para você, Recentes, Com estrela, Espaços com os recentes, Projetos com os recentes, Metas, Dashboards). Rotas: `/` Para você, `/spaces` espaços, `/spaces/new` modelos, `/spaces/:id` espaço, `/projects` diretório, `/projects/:id` quadro, `/projects/:id/tasks/:taskId` detalhe da tarefa, `/goals` metas, `/dashboard` dashboard padrão. Paleta: fundo branco, neutros frios e azul como único acento; ícones de projeto com cor derivada do nome.
 
 Comentários:
 

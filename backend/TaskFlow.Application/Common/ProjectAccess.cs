@@ -29,6 +29,14 @@ public static class ProjectAccess
             : throw new ForbiddenException("Only the project owner can do this.");
     }
 
+    // Espaço: o dono, ou quem participa de algum projeto dentro dele.
+    public static IQueryable<Space> AccessibleSpaces(this ITaskFlowDbContext db, Guid userId)
+    {
+        var projects = db.AccessibleProjects(userId);
+
+        return db.Spaces.Where(s => s.OwnerId == userId || projects.Any(p => p.SpaceId == s.Id));
+    }
+
     public static Task<bool> IsProjectPersonAsync(
         this ITaskFlowDbContext db, Guid projectId, Guid userId, CancellationToken ct) =>
         db.AccessibleProjects(userId).AnyAsync(p => p.Id == projectId, ct);

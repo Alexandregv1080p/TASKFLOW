@@ -182,6 +182,12 @@ export interface TaskComment {
   createdAt: string
 }
 
+export interface SearchResult {
+  tasks: { id: string; projectId: string; projectName: string; number: number; title: string; status: TaskStatus }[]
+  projects: { id: string; name: string; spaceName: string | null; archived: boolean }[]
+  spaces: { id: string; name: string }[]
+}
+
 export type NotificationType = 'Assigned' | 'Mentioned' | 'Commented'
 
 // "App" no nome para não colidir com o Notification global do navegador.

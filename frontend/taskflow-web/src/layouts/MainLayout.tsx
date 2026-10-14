@@ -13,10 +13,11 @@ import {
   TargetIcon,
   UserCircleIcon,
 } from '@phosphor-icons/react'
-import { useState, type FormEvent } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { Avatar } from '../components/Avatar'
+import { CommandPalette } from '../components/CommandPalette'
 import { NotificationBell } from '../components/NotificationBell'
 import { ProjectAvatar } from '../components/ProjectAvatar'
 import { SidebarCustomizeDialog } from '../components/SidebarCustomizeDialog'
@@ -25,12 +26,12 @@ import { useSidebarPrefs } from '../hooks/useSidebarPrefs'
 import { api } from '../services/api'
 
 const RECENT_PROJECTS = 5
+const SHORTCUT = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘ K' : 'Ctrl K'
 
 export function MainLayout() {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
   const location = useLocation()
-  const [search, setSearch] = useState('')
+  const [searching, setSearching] = useState(false)
   const [customizing, setCustomizing] = useState(false)
   const { prefs, setSection, reset } = useSidebarPrefs(user?.id ?? 'anon')
 
@@ -47,12 +48,18 @@ export function MainLayout() {
   const forYouClass = (item: 'home' | 'Viewed' | 'Starred') => (isActive(item) ? 'sidebar__link active' : 'sidebar__link')
   const current = (item: 'home' | 'Viewed' | 'Starred') => (isActive(item) ? ('page' as const) : undefined)
 
-  // A busca do topo leva ao diretório de projetos já filtrado.
-  function submitSearch(e: FormEvent) {
-    e.preventDefault()
-    navigate(`/projects?search=${encodeURIComponent(search.trim())}`)
-    setSearch('')
-  }
+  // Ctrl+K (⌘K no Mac) abre a busca global de qualquer página.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearching(true)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   return (
     <div className="layout">
@@ -64,16 +71,11 @@ export function MainLayout() {
           TaskFlow
         </Link>
 
-        <form className="topbar__search" role="search" onSubmit={submitSearch}>
+        <button className="topbar__search" onClick={() => setSearching(true)} aria-keyshortcuts="Control+K Meta+K">
           <MagnifyingGlassIcon size={16} aria-hidden="true" />
-          <input
-            type="search"
-            aria-label="Buscar projetos"
-            placeholder="Buscar projetos"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </form>
+          <span className="topbar__search-text">Buscar</span>
+          <kbd className="topbar__kbd">{SHORTCUT}</kbd>
+        </button>
 
         <Link to="/projects?new=1" className="btn btn--primary">
           <PlusIcon size={16} weight="bold" aria-hidden="true" />
@@ -192,6 +194,8 @@ export function MainLayout() {
       <main className="content">
         <Outlet />
       </main>
+
+      {searching && <CommandPalette onClose={() => setSearching(false)} />}
 
       {customizing && (
         <SidebarCustomizeDialog prefs={prefs} onChange={setSection} onReset={reset} onClose={() => setCustomizing(false)} />

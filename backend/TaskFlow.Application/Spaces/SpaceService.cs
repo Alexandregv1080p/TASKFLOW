@@ -135,13 +135,7 @@ public class SpaceService(
     }
 
     // Espaços que eu criei ou que contêm algum projeto a que tenho acesso.
-    private IQueryable<Space> Accessible()
-    {
-        var userId = currentUser.UserId;
-        var accessibleProjects = db.AccessibleProjects(userId);
-
-        return db.Spaces.Where(s => s.OwnerId == userId || accessibleProjects.Any(p => p.SpaceId == s.Id));
-    }
+    private IQueryable<Space> Accessible() => db.AccessibleSpaces(currentUser.UserId);
 
     private async Task<Space> FindAsync(Guid id, CancellationToken ct) =>
         await Accessible().SingleOrDefaultAsync(s => s.Id == id, ct) ?? throw new NotFoundException(nameof(Space), id);

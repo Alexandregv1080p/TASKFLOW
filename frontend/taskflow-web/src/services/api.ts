@@ -11,6 +11,7 @@ import type {
   ProjectMember,
   ProjectScope,
   ProjectStatus,
+  SearchResult,
   ProjectSummary,
   Space,
   SpaceSummary,
@@ -117,6 +118,8 @@ export const api = {
 
   getDashboard: () => request<Dashboard>('/dashboard'),
   getForYou: (filter: ForYouFilter) => request<ForYouResponse>(`/for-you?filter=${filter}`),
+
+  search: (q: string) => request<SearchResult>(`/search?${new URLSearchParams({ q })}`),
 
   listNotifications: () => request<NotificationList>('/notifications'),
   markNotificationRead: (id: string) => request<void>(`/notifications/${id}/read`, 'POST'),

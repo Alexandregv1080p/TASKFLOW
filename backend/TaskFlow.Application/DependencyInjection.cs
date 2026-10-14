@@ -5,6 +5,7 @@ using TaskFlow.Application.ForYou;
 using TaskFlow.Application.Goals;
 using TaskFlow.Application.Notifications;
 using TaskFlow.Application.Projects;
+using TaskFlow.Application.Search;
 using TaskFlow.Application.Spaces;
 using TaskFlow.Application.Tasks;
 
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ForYouService>();
         services.AddScoped<GoalService>();
         services.AddScoped<NotificationService>();
+        services.AddScoped<SearchService>();
 
         return services;
     }
