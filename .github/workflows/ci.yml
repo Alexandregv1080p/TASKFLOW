@@ -86,7 +86,7 @@ jobs:
       - run: npm run build
 
   docker:
-    name: Docker (build + smoke test + publicação)
+    name: Docker (build + smoke test + E2E + publicação)
     runs-on: ubuntu-latest
     needs: [backend, frontend]
 
@@ -125,6 +125,32 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"name":"CI","email":"ci@taskflow.test","password":"ci-smoke-test-123"}' | jq -r .accessToken)
           curl -fsS http://localhost:3000/api/projects -H "Authorization: Bearer $TOKEN" > /dev/null
+
+      # Testes de ponta a ponta no navegador contra a mesma stack (nginx -> API -> PostgreSQL).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Testes E2E (Playwright)
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: http://localhost:3000
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test
+
+      - name: Relatório dos testes E2E
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
 
       - name: Logs em caso de falha
         if: failure()

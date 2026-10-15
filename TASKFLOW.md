@@ -2102,6 +2102,7 @@ Decisões:
 * [x] Quadro em tempo real com SignalR (além da spec original)
 * [x] Notificações e menções com @, com aviso em tempo real (além da spec original)
 * [x] Busca global com Ctrl+K (além da spec original)
+* [x] Testes de ponta a ponta com Playwright, também no CI (além da spec original)
 
 ### Para você (página inicial)
 
@@ -2258,6 +2259,23 @@ GET /api/search?q=revis   → { "tasks": [...8], "projects": [...5], "spaces": [
 * **Acessibilidade:** padrão combobox + listbox (`aria-activedescendant`); o foco fica no campo enquanto as setas movem a opção ativa.
 * **Limites conhecidos:** a busca não ignora acentos ("revisao" não acha "Revisão"); é `LIKE '%termo%'`, que varre as tabelas (com volume real, índice trigram `pg_trgm` ou full-text do PostgreSQL); a descrição da tarefa não entra na busca. A busca do diretório de projetos continua existindo na própria página.
 * **Testes:** `SearchTests` (tarefas, projetos e espaços; busca por número e chave; termo curto; nada de projetos de outras pessoas).
+
+### Testes de ponta a ponta (Playwright)
+
+Quatro testes em `e2e/` usam o app como uma pessoa usaria, num Chromium de verdade, contra a stack do Docker Compose (nginx, API e PostgreSQL):
+
+| Teste | Fluxo |
+| --- | --- |
+| `auth.spec.ts` | página protegida leva ao login; cadastro, sair, senha errada e login |
+| `board.spec.ts` | criar projeto e tarefa, editar no detalhe, comentar, mover pelo botão e arrastando até Concluído, recarregar |
+| `collaboration.spec.ts` | duas pessoas em contextos separados: card movido por uma aparece para a outra; menção `@` acende o sino e o aviso abre a tarefa |
+| `search.spec.ts` | Ctrl+K, busca pela chave (`PDC-2`) e pelo nome, Enter abre a tarefa |
+
+* **Preparação pela API:** cada teste cadastra os próprios usuários (e-mails únicos) e cria os dados pela API; a tela fica só para o que está sendo verificado. Por isso rodam em paralelo e contra um banco com dados.
+* **Seletores por papel e nome acessível** (`getByRole`, `getByLabel`), os mesmos que um leitor de tela usa; uma regressão de acessibilidade também quebra o teste.
+* **CI:** rodam no job Docker logo após o smoke test, contra as imagens recém-construídas; se falharem, o relatório com trace e screenshots é publicado como artefato.
+* **Estabilidade:** 20 execuções seguidas (`--repeat-each=5`) sem falha.
+* **Fora do escopo:** só Chromium (Firefox e WebKit ficam para quando houver motivo) e sem teste visual por screenshot.
 
 ### Layout
 

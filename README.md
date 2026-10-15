@@ -91,3 +91,14 @@ cd frontend/taskflow-web
 npm run build
 npm run lint
 ```
+
+Ponta a ponta (Playwright), com a stack no ar (`docker compose up -d`). Cada teste cria os próprios usuários:
+
+```bash
+cd e2e
+npm ci
+npx playwright install chromium
+npx playwright test
+```
+
+Por padrão os testes usam `http://localhost:3200`; outra URL vai em `E2E_BASE_URL`. No CI eles rodam no job Docker, contra a stack recém-construída.
