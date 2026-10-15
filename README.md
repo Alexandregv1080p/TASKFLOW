@@ -17,6 +17,9 @@ backend/
 └── TaskFlow.Infrastructure   # EF Core, PostgreSQL
 frontend/
 └── taskflow-web              # React + TypeScript + Vite
+mobile/
+└── taskflow-android          # App Android (Kotlin + Jetpack Compose)
+e2e/                          # Testes de ponta a ponta (Playwright)
 tests/
 ├── TaskFlow.UnitTests        # Regras de domínio
 └── TaskFlow.IntegrationTests # Persistência, casos de uso e API contra PostgreSQL
@@ -75,6 +78,19 @@ Em Development a API aplica as migrations automaticamente e usa o segredo JWT de
 * Swagger: http://localhost:5033/swagger
 * Health: http://localhost:5033/health
 * PostgreSQL: `localhost:5436` (db/usuário/senha: `taskflow`, apenas para desenvolvimento).
+
+## App Android
+
+App companheiro em Kotlin + Jetpack Compose (`mobile/taskflow-android`), que usa a mesma API e o mesmo tempo real do site: login, Para você, projetos, quadro, detalhe da tarefa com comentários e menções, e notificações.
+
+Com a stack no ar (`docker compose up -d`) e um emulador aberto:
+
+```bash
+cd mobile/taskflow-android
+./gradlew installDebug
+```
+
+O app aponta para `http://10.0.2.2:3200/`, que é o localhost da máquina visto pelo emulador. Em aparelho físico na mesma rede, passe o IP da máquina: `./gradlew installDebug -Ptaskflow.apiUrl=http://192.168.0.10:3200/`. Testes e lint: `./gradlew testDebugUnitTest lintDebug`. O CI gera o APK de debug como artefato.
 
 ## Testes
 

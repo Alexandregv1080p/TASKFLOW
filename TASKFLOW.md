@@ -2103,6 +2103,7 @@ Decisões:
 * [x] Notificações e menções com @, com aviso em tempo real (além da spec original)
 * [x] Busca global com Ctrl+K (além da spec original)
 * [x] Testes de ponta a ponta com Playwright, também no CI (além da spec original)
+* [x] App Android companheiro (Kotlin + Compose), com tempo real e notificações (além da spec original)
 
 ### Para você (página inicial)
 
@@ -2276,6 +2277,28 @@ Quatro testes em `e2e/` usam o app como uma pessoa usaria, num Chromium de verda
 * **CI:** rodam no job Docker logo após o smoke test, contra as imagens recém-construídas; se falharem, o relatório com trace e screenshots é publicado como artefato.
 * **Estabilidade:** 20 execuções seguidas (`--repeat-each=5`) sem falha.
 * **Fora do escopo:** só Chromium (Firefox e WebKit ficam para quando houver motivo) e sem teste visual por screenshot.
+
+### App Android
+
+App companheiro em `mobile/taskflow-android`, feito para o uso do dia a dia no celular, não para repetir o site inteiro. Usa a mesma API e o mesmo hub de tempo real; o backend não mudou.
+
+| Tela | O que faz |
+| --- | --- |
+| Login | entrar ou criar conta |
+| Para você | abas Recomendado, Atribuído a mim e Com estrela |
+| Projetos | lista com espaço e progresso |
+| Quadro | uma coluna por vez em abas (A fazer, Em andamento, Concluído), mover pelos botões do card, indicador "Ao vivo" |
+| Tarefa | status, responsável ("Atribuir a mim"), descrição e comentários com sugestão de `@` e menções destacadas |
+| Notificações | lista com não lidas, contador na barra inferior, toque abre a tarefa |
+
+* **Stack:** Kotlin, Jetpack Compose (Material 3), Navigation Compose, Retrofit + OkHttp + kotlinx.serialization, cliente SignalR para Java. MVVM com injeção de dependência manual (três objetos na `Application`), sem framework.
+* **Tempo real:** uma conexão por app, aberta enquanto há sessão e refeita a cada 5 s se cair. Quadro e tarefa entram no grupo do projeto (contagem de quem está olhando, para sair só quando a última tela fecha). Os avisos não trazem dados: as telas recarregam pela API, como no site.
+* **Sessão:** o token (JWT de 60 min) fica em SharedPreferences privadas, fora de backup (`allowBackup=false`). Um 401 encerra a sessão e volta ao login.
+* **Rede:** release só HTTPS; o build debug libera HTTP para falar com o compose local. O endereço vem de `taskflow.apiUrl` em `gradle.properties` (padrão `http://10.0.2.2:3200/`, o localhost visto pelo emulador).
+* **Mesmas regras do site:** a sigla do projeto e a chave da tarefa (`projectKey`), os nomes de status, as transições de uma coluna por vez e a regra de menção foram portados e têm testes com os mesmos casos.
+* **Testes:** 10 testes JUnit: `FormatTest` (sigla, transições, menções, iniciais) e `TaskFlowRepositoryTest` com MockWebServer (login guarda a sessão e manda o token, senha errada, token vencido encerra a sessão, mensagens de erro, corpo do PATCH). No CI, o job Android roda testes, lint e gera o APK de debug como artefato.
+* **Verificação manual:** rodado no emulador (Pixel 6a, API 35) contra a stack local: login, Para você, quadro, card movido por outra pessoa aparecendo sozinho, comentário com menção que notifica a colega, e notificação nova chegando ao vivo.
+* **Fora do escopo por ora:** criar projetos e tarefas pelo app (feito no site), espaços, metas, dashboards e busca; push notification com o app fechado (pede Firebase/FCM); conexão desligada em segundo plano (hoje fica aberta enquanto o processo vive).
 
 ### Layout
 

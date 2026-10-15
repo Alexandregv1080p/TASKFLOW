@@ -1,0 +1,16 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.jks
+*.keystore
+.kotlin/
+
+# O .gitignore da raiz (modelo do Visual Studio) ignora pastas "debug": aqui é código-fonte do build debug.
+!app/src/debug/
