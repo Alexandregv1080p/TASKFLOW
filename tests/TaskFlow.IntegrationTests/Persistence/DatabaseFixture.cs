@@ -16,7 +16,12 @@ public class DatabaseFixture : IAsyncLifetime
         ?? "Host=localhost;Port=5436;Database=taskflow_tests;Username=taskflow;Password=taskflow";
 
     public WebApplicationFactory<Program> Api { get; } = new WebApplicationFactory<Program>()
-        .WithWebHostBuilder(b => b.UseSetting("ConnectionStrings:Default", ConnectionString));
+        .WithWebHostBuilder(b => b
+            .UseSetting("ConnectionStrings:Default", ConnectionString)
+            .UseSetting("Storage:Path", StoragePath));
+
+    // Anexos dos testes numa pasta temporária, não dentro do repositório.
+    public static readonly string StoragePath = Path.Combine(Path.GetTempPath(), "taskflow-test-attachments");
 
     // Cliente HTTP já autenticado como um usuário novo e exclusivo do teste.
     public async Task<HttpClient> CreateAuthenticatedClientAsync(string name = "Ana")

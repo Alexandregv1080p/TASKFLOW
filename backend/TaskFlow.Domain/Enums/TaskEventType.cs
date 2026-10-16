@@ -10,5 +10,7 @@ public enum TaskEventType
     StatusChanged,
     AssigneeChanged,
     TypeChanged,
-    ParentChanged
+    ParentChanged,
+    AttachmentAdded,
+    AttachmentRemoved
 }

@@ -179,6 +179,8 @@ export type TaskEventType =
   | 'AssigneeChanged'
   | 'TypeChanged'
   | 'ParentChanged'
+  | 'AttachmentAdded'
+  | 'AttachmentRemoved'
 
 // oldValue/newValue: nome de enum (status, prioridade), data yyyy-MM-dd, id do usuário (responsável) ou texto (título).
 export interface TaskEvent {
@@ -237,6 +239,16 @@ export interface ProjectInput {
   name: string
   description: string | null
   spaceId: string | null
+}
+
+// Arquivo anexado a uma tarefa; o conteúdo se baixa à parte (com o token).
+export interface Attachment {
+  id: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  uploadedById: string | null
+  createdAt: string
 }
 
 export interface TaskInput {

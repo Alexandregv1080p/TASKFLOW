@@ -18,6 +18,10 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app/publish .
 
+# Pasta dos anexos (montada como volume no compose) pertencendo ao usuário da aplicação: um volume novo
+# herda dono e permissões desta pasta, e a API grava nela sem rodar como root.
+RUN mkdir -p /app/data && chown $APP_UID /app/data
+
 USER $APP_UID
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "TaskFlow.Api.dll"]

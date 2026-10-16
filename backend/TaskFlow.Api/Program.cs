@@ -36,7 +36,9 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(connectionString, jwt);
+// Pasta dos anexos. No Docker é um volume (/app/data); nos testes, uma pasta temporária.
+var storagePath = builder.Configuration["Storage:Path"] ?? Path.Combine(builder.Environment.ContentRootPath, "data", "attachments");
+builder.Services.AddInfrastructure(connectionString, jwt, storagePath);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();

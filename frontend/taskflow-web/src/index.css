@@ -1583,6 +1583,83 @@ textarea {
   text-decoration: underline;
 }
 
+/* Anexos */
+
+.attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: -0.4rem;
+  padding: 0.4rem;
+  border: 1px dashed transparent;
+  border-radius: var(--radius-control);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.attachments--over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.attachments__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachments__item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.attachments__thumb {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--column);
+}
+
+.attachments__icon {
+  flex: none;
+  width: 40px;
+  color: var(--muted);
+}
+
+.attachments__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.attachments__name {
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachments__meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.attachments__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+}
+
 /* Diálogo de tipos de tarefa */
 
 .member-form {

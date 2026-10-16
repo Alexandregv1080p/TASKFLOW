@@ -2105,6 +2105,7 @@ Decisões:
 * [x] Testes de ponta a ponta com Playwright, também no CI (além da spec original)
 * [x] App Android companheiro (Kotlin + Compose), com tempo real e notificações (além da spec original)
 * [x] Tipos de tarefa por projeto, responsável na criação e subtarefas (além da spec original)
+* [x] Confiança: papel de visualizador, exportação em CSV e anexos (além da spec original)
 
 ### Para você (página inicial)
 
@@ -2309,6 +2310,49 @@ PATCH  /api/tasks/{id}/type                   { "typeId": "..." | null }   (quem
 
 * **Testes:** `TaskTypeAndSubtaskTests` (domínio: cor, tipos padrão, regras de subtarefa) e `TaskTypeTests` (API: padrões, permissões, conflito de nome, tipo trocado no histórico, tipo excluído, responsável e tipo de fora do projeto, subtarefas e cascata), mais o E2E `types-subtasks.spec.ts`.
 * **Fora do escopo por ora:** colunas configuráveis por projeto.
+
+### Confiança: visualizador, exportação e anexos
+
+O que uma empresa costuma exigir antes de adotar a ferramenta: dar acesso sem dar poder de alteração, ter os dados na mão e guardar os arquivos do trabalho junto das tarefas.
+
+**Papel de visualizador.** Quem compartilha escolhe o papel: **Membro** (trabalha nas tarefas) ou **Visualizador** (só acompanha, como um cliente ou gestor).
+
+```http
+POST  /api/projects/{id}/members            { "email": "...", "role": "Member" | "Viewer" }
+PATCH /api/projects/{id}/members/{userId}   { "role": "Member" | "Viewer" }   (só o dono)
+```
+
+* O visualizador vê quadro, tarefas, comentários, histórico e anexos, marca estrela e exporta; não cria, edita, move, comenta, anexa nem exclui (403). Também não pode ser responsável por tarefa.
+* A regra fica em `ProjectAccess.CanEditProjectAsync`, usada por todas as alterações de tarefa e de anexo.
+* Virar visualizador tira a pessoa da responsabilidade das tarefas dela, com registro no histórico (o mesmo de quando alguém sai do projeto).
+* Não existe segundo dono (400). Quem já era membro antes dos papéis continua membro (valor padrão da coluna).
+* No site: o diálogo "Compartilhar" tem o papel ao adicionar e um seletor por pessoa (dono); o visualizador vê o aviso "Você é visualizador deste projeto" e nenhum controle de edição. No Android, a mesma regra deixa as telas somente leitura.
+
+**Exportar CSV.** `GET /api/projects/{id}/export` (botão "Exportar CSV" no projeto) baixa as tarefas com chave, título, tipo, status, prioridade, responsável, criador, tarefa-pai, prazo, data de criação e descrição.
+
+* Ponto e vírgula e BOM UTF-8: é o que o Excel em português abre direto, com acentos e colunas certas.
+* **Injeção de fórmula:** texto que começa com `=`, `+`, `-` ou `@` sairia como fórmula na planilha de quem abrir (ex.: `=HYPERLINK(...)`); ganha um apóstrofo na frente e fica como texto.
+* Qualquer pessoa do projeto exporta (inclusive visualizador e projeto arquivado); cada exportação fica no log (`ProjectExported`).
+* A chave da tarefa agora também é calculada no backend (`ProjectKey`), com os mesmos casos de teste do site e do Android.
+
+**Anexos.** Seção "Anexos" no detalhe da tarefa: enviar (botão ou soltando o arquivo), miniatura de imagens, baixar e excluir.
+
+```http
+GET    /api/tasks/{id}/attachments
+POST   /api/tasks/{id}/attachments     (multipart, campo "file") → 201
+GET    /api/attachments/{id}           (download)
+DELETE /api/attachments/{id}           (quem anexou ou o dono do projeto)
+```
+
+* **O que entra:** até 10 MB; imagens, PDF, texto, CSV, JSON, ZIP e documentos do Office, por lista de extensões. Nada que o navegador execute (HTML, SVG, JS) nem executáveis. O tipo de conteúdo vem da extensão, nunca do que o navegador declarou.
+* **Onde fica:** a interface `IFileStorage` com uma implementação em disco (`LocalFileStorage`); no Docker, o volume `taskflow_attachments` em `/app/data`, gravado pelo usuário não-root da imagem. Trocar por S3/Azure Blob é implementar a interface.
+* **Caminho gerado pelo servidor** (`projeto/tarefa/anexo`): o nome enviado nunca vira caminho, e o armazenamento ainda recusa qualquer caminho fora da pasta raiz.
+* **Download** sempre autenticado e como arquivo (`Content-Disposition: attachment` e `X-Content-Type-Options: nosniff`): um arquivo enviado por alguém nunca abre como página do TaskFlow. No site, as miniaturas vêm como blob com o token.
+* **Nada fica para trás:** se o banco falhar depois de gravar o arquivo, o arquivo é apagado; excluir o anexo, a tarefa (com as subtarefas) ou o projeto apaga os arquivos do disco. O que falhar nessa limpeza fica órfão e só gera log (um job de conciliação resolveria com volume real).
+* Anexar e remover entram no histórico (`AttachmentAdded`, `AttachmentRemoved`) e avisam o quadro em tempo real. O nginx aceita até 11 MB em `/api/` (o padrão dele é 1 MB).
+
+* **Testes:** `ViewerTests`, `ExportTests` (CSV no formato do Excel, aspas, quebra de linha e injeção de fórmula), `AttachmentTests` (tipo pela extensão, tipos e tamanhos recusados, visualizador, permissão de excluir, arquivos apagados do disco junto com a tarefa e as subtarefas), `ProjectKeyTests`, e os E2E `viewer.spec.ts` (inclui baixar o CSV) e `attachments.spec.ts` (inclui um arquivo de 2 MB pelo nginx).
+* **Fora do escopo por ora:** anexos no app Android; antivírus nos arquivos enviados; cota de espaço por projeto.
 
 ### App Android
 

@@ -60,6 +60,10 @@ services:
     ports:
       - "${API_PORT:-8080}:8080"
 
+    # Anexos das tarefas.
+    volumes:
+      - taskflow_attachments:/app/data
+
     networks:
       - backend
       - frontend
@@ -141,5 +145,6 @@ networks:
 
 volumes:
   taskflow_postgres_data:
+  taskflow_attachments:
   taskflow_prometheus_data:
   taskflow_grafana_data:

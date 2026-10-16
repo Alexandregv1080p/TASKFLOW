@@ -90,7 +90,8 @@ export function ProjectDetails() {
 
   const replaceTask = (task: Task) => setData(([p, t, u]) => [p, t.map((x) => (x.id === task.id ? task : x)), u])
   const removeTask = (taskId: string) => setData(([p, t, u]) => [p, t.filter((x) => x.id !== taskId && x.parentId !== taskId), u])
-  const addTask = (task: Task) => setData(([p, t, u]) => [p, [...t, task], u])
+  // A recarga em tempo real pode já ter trazido a tarefa antes da resposta da criação: sem duplicar.
+  const addTask = (task: Task) => setData(([p, t, u]) => [p, [...t.filter((x) => x.id !== task.id), task], u])
 
   async function run(action: () => Promise<void>, taskId: string | null = null) {
     setBusyTaskId(taskId)

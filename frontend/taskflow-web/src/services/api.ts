@@ -1,4 +1,5 @@
 import type {
+  Attachment,
   AuthResponse,
   Dashboard,
   ForYouFilter,
@@ -108,14 +109,40 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
   return response.status === 204 ? (undefined as T) : response.json()
 }
 
-// Baixa um arquivo da API (com o token, que um link comum não enviaria) e entrega ao navegador para salvar.
-async function download(path: string): Promise<void> {
+// Busca um arquivo da API com o token (um <a href> ou <img src> comum não enviaria o header).
+async function fetchFile(path: string): Promise<Response> {
   const token = session.token
   const response = await fetch(`${BASE_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
   if (!response.ok) {
     const error = await response.json().catch(() => null)
     throw new ApiError(response.status, error?.message ?? `Erro ${response.status}`)
   }
+  return response
+}
+
+// Envia um arquivo (multipart). O navegador monta o Content-Type com o boundary.
+async function upload<T>(path: string, file: File): Promise<T> {
+  const body = new FormData()
+  body.append('file', file)
+  const token = session.token
+  let response: Response
+  try {
+    response = await fetch(`${BASE_URL}${path}`, { method: 'POST', body, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  } catch {
+    throw new ApiError(0, 'Não foi possível conectar à API.')
+  }
+
+  if (!response.ok) {
+    if (response.status === 413) throw new ApiError(413, 'O arquivo passa de 10 MB.')
+    const error = await response.json().catch(() => null)
+    throw new ApiError(response.status, error?.message ?? `Erro ${response.status}`)
+  }
+  return response.json()
+}
+
+// Baixa um arquivo da API (com o token, que um link comum não enviaria) e entrega ao navegador para salvar.
+async function download(path: string): Promise<void> {
+  const response = await fetchFile(path)
 
   // Nome sugerido pela API (Content-Disposition), com acentos via filename*.
   const disposition = response.headers.get('Content-Disposition') ?? ''
@@ -176,6 +203,12 @@ export const api = {
   restoreProject: (id: string) => request<Project>(`/projects/${id}/restore`, 'POST'),
   deleteProject: (id: string) => request<void>(`/projects/${id}`, 'DELETE'),
   exportProjectCsv: (id: string) => download(`/projects/${id}/export`),
+
+  listAttachments: (taskId: string) => request<Attachment[]>(`/tasks/${taskId}/attachments`),
+  uploadAttachment: (taskId: string, file: File) => upload<Attachment>(`/tasks/${taskId}/attachments`, file),
+  downloadAttachment: (id: string) => download(`/attachments/${id}`),
+  attachmentBlob: async (id: string) => (await fetchFile(`/attachments/${id}`)).blob(),
+  deleteAttachment: (id: string) => request<void>(`/attachments/${id}`, 'DELETE'),
 
   setTaskStar: (id: string, starred: boolean) => request<Task>(`/tasks/${id}/star`, starred ? 'PUT' : 'DELETE'),
   markTaskViewed: (id: string) => request<void>(`/tasks/${id}/view`, 'POST'),

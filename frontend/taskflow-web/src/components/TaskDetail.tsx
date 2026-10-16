@@ -17,6 +17,7 @@ import type { Task, TaskInput, TaskPriority, TaskStatus } from '../types'
 import { PRIORITY_LABEL, STATUSES, STATUS_LABEL, formatDateTime } from '../utils/format'
 import { Avatar } from './Avatar'
 import { PriorityIcon } from './PriorityIcon'
+import { Attachments } from './Attachments'
 import { Subtasks } from './Subtasks'
 import { TaskActivity } from './TaskActivity'
 
@@ -200,6 +201,18 @@ export function TaskDetail() {
                 ) : (
                   <EditableDescription value={task.description} onSave={(description) => update(task, { description })} />
                 )}
+              </section>
+
+              <section className="task-detail__section">
+                <h3>Anexos</h3>
+                <Attachments
+                  taskId={task.id}
+                  version={version + liveVersion}
+                  users={users}
+                  currentUserId={user?.id}
+                  isProjectOwner={project.ownerId === user?.id}
+                  readOnly={readOnly}
+                />
               </section>
 
               {/* Um nível só: subtarefa não tem subtarefas. */}

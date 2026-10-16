@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<SpaceService>();
         services.AddScoped<TaskService>();
         services.AddScoped<TaskTypeService>();
+        services.AddScoped<AttachmentService>();
         services.AddScoped<DashboardService>();
         services.AddScoped<ForYouService>();
         services.AddScoped<GoalService>();

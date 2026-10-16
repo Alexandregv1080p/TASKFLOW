@@ -310,6 +310,10 @@ function describe(
         </>
       )
     }
+    case 'AttachmentAdded':
+      return <>anexou <span className="activity__value">{newValue}</span></>
+    case 'AttachmentRemoved':
+      return <>removeu o anexo <span className="activity__value">{oldValue}</span></>
     case 'ParentChanged': {
       const label = (id: string) => taskLabel(id) ?? 'uma tarefa excluída'
       if (!newValue) return <>deixou de ser subtarefa de <span className="activity__value">{label(oldValue ?? '')}</span></>

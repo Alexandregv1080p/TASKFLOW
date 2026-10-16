@@ -9,7 +9,12 @@ namespace TaskFlow.Application.Tasks;
 
 // Tarefas só são acessíveis através de projetos em que o usuário atual é dono ou membro.
 // Em projeto arquivado, as tarefas ficam somente leitura (estrela e "visto" são pessoais e continuam valendo).
-public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<TaskService> logger, ILiveNotifier? live = null)
+public class TaskService(
+    ITaskFlowDbContext db,
+    ICurrentUser currentUser,
+    ILogger<TaskService> logger,
+    ILiveNotifier? live = null,
+    IFileStorage? files = null)
 {
     public async Task<TaskResponse> CreateAsync(Guid projectId, CreateTaskRequest request, CancellationToken ct = default)
     {
@@ -115,9 +120,15 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var task = await FindForWriteAsync(id, ct);
+        // As subtarefas vão junto (cascata); os anexos de todas saem do disco depois que o banco confirmar.
+        var subtaskIds = await db.Tasks.Where(t => t.ParentId == task.Id).Select(t => t.Id).ToListAsync(ct);
 
         db.Tasks.Remove(task);
         await db.SaveChangesAsync(ct);
+
+        foreach (var taskId in subtaskIds.Prepend(task.Id))
+            await files.TryDeleteAsync(f => f.DeletePrefixAsync($"{task.ProjectId}/{taskId}"));
+
         await live.ChangedAsync(task.ProjectId, task.Id);
     }
 

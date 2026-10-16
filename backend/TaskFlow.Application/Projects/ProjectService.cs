@@ -7,7 +7,12 @@ using TaskFlow.Domain.Enums;
 namespace TaskFlow.Application.Projects;
 
 // Acesso conforme ProjectAccess: dono e membros leem; só o dono altera, arquiva e exclui.
-public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogger<ProjectService> logger, ILiveNotifier? live = null)
+public class ProjectService(
+    ITaskFlowDbContext db,
+    ICurrentUser currentUser,
+    ILogger<ProjectService> logger,
+    ILiveNotifier? live = null,
+    IFileStorage? files = null)
 {
     public async Task<ProjectResponse> CreateAsync(CreateProjectRequest request, CancellationToken ct = default)
     {
@@ -143,6 +148,8 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
     {
         db.Projects.Remove(await db.FindOwnedProjectAsync(currentUser.UserId, id, ct));
         await db.SaveChangesAsync(ct);
+        // Os anexos de todas as tarefas do projeto ficam na pasta dele.
+        await files.TryDeleteAsync(f => f.DeletePrefixAsync(id.ToString()));
         await live.ChangedAsync(id);
 
         logger.LogInformation("ProjectDeleted {ProjectId} {UserId}", id, currentUser.UserId);
