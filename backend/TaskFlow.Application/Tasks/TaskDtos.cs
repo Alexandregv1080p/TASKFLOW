@@ -23,6 +23,9 @@ public record AssignTaskRequest(Guid? UserId);
 // TypeId nulo deixa a tarefa sem tipo.
 public record ChangeTaskTypeRequest(Guid? TypeId);
 
+// ParentId nulo transforma a subtarefa de volta em tarefa comum.
+public record ChangeTaskParentRequest(Guid? ParentId);
+
 // OldValue/NewValue: nomes de enum (status, prioridade), data yyyy-MM-dd, id do usuário (responsável), id do tipo
 // ou texto (título).
 public record TaskEventResponse(Guid Id, TaskEventType Type, string? OldValue, string? NewValue, Guid? UserId, DateTime CreatedAt);

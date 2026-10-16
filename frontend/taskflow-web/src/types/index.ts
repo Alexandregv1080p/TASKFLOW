@@ -174,6 +174,7 @@ export type TaskEventType =
   | 'StatusChanged'
   | 'AssigneeChanged'
   | 'TypeChanged'
+  | 'ParentChanged'
 
 // oldValue/newValue: nome de enum (status, prioridade), data yyyy-MM-dd, id do usuário (responsável) ou texto (título).
 export interface TaskEvent {

@@ -13,6 +13,8 @@ interface Props {
   users: UserSummary[]
   // Para mostrar o nome do tipo nas trocas de tipo.
   types: TaskType[]
+  // Chave (ex.: WEB-3) de uma tarefa do projeto, para as mudanças de tarefa-pai.
+  taskLabel: (id: string) => string | undefined
   currentUserId: string | undefined
   // Projeto arquivado: sem comentar nem excluir comentário.
   readOnly: boolean
@@ -21,7 +23,7 @@ interface Props {
 type Entry = { kind: 'comment'; at: string; comment: TaskComment } | { kind: 'event'; at: string; event: TaskEvent }
 
 // Comentários e alterações em uma única linha do tempo, do mais recente para o mais antigo.
-export function TaskActivity({ taskId, version, users, types, currentUserId, readOnly }: Props) {
+export function TaskActivity({ taskId, version, users, types, taskLabel, currentUserId, readOnly }: Props) {
   const { data, error, reload, setData } = useAsync(
     () => Promise.all([api.taskHistory(taskId), api.listComments(taskId)]),
     [taskId, version],
@@ -100,7 +102,7 @@ export function TaskActivity({ taskId, version, users, types, currentUserId, rea
                     </>
                   ) : (
                     <p className="activity__text">
-                      <strong>{author}</strong> {describe(entry.event, nameOf, (typeId) => types.find((t) => t.id === typeId)?.name)}
+                      <strong>{author}</strong> {describe(entry.event, nameOf, (typeId) => types.find((t) => t.id === typeId)?.name, taskLabel)}
                     </p>
                   )}
 
@@ -264,6 +266,7 @@ function describe(
   event: TaskEvent,
   nameOf: (id: string | null) => string | undefined,
   typeOf: (id: string) => string | undefined,
+  taskLabel: (id: string) => string | undefined,
 ): ReactNode {
   const { oldValue, newValue } = event
 
@@ -306,6 +309,11 @@ function describe(
           alterou o tipo: <Change from={label(oldValue)} to={label(newValue)} />
         </>
       )
+    }
+    case 'ParentChanged': {
+      const label = (id: string) => taskLabel(id) ?? 'uma tarefa excluída'
+      if (!newValue) return <>deixou de ser subtarefa de <span className="activity__value">{label(oldValue ?? '')}</span></>
+      return <>tornou esta tarefa subtarefa de <span className="activity__value">{label(newValue)}</span></>
     }
     case 'AssigneeChanged':
       if (!newValue) return 'removeu o responsável'

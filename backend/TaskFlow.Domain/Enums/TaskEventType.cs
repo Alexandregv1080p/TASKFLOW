@@ -9,5 +9,6 @@ public enum TaskEventType
     DueDateChanged,
     StatusChanged,
     AssigneeChanged,
-    TypeChanged
+    TypeChanged,
+    ParentChanged
 }

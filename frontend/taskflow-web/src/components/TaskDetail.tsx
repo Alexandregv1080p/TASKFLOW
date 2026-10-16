@@ -212,7 +212,10 @@ export function TaskDetail() {
 
               <section className="task-detail__section">
                 <h3>Atividade</h3>
-                <TaskActivity taskId={task.id} version={version + liveVersion} users={users} types={types} currentUserId={user?.id} readOnly={readOnly} />
+                <TaskActivity taskId={task.id} version={version + liveVersion} users={users} types={types} taskLabel={(id) => {
+                  const t = tasks.find((x) => x.id === id)
+                  return t && `${keyPrefix}-${t.number}`
+                }} currentUserId={user?.id} readOnly={readOnly} />
               </section>
             </div>
 
@@ -248,6 +251,28 @@ export function TaskDetail() {
                         ))}
                       </select>
                     </div>
+                  </dd>
+
+                  <dt>Tarefa-pai</dt>
+                  <dd>
+                    {/* Um nível só: quem já tem subtarefas não vira subtarefa, e subtarefa não é pai. */}
+                    <select
+                      className="inline-select"
+                      aria-label="Tarefa-pai"
+                      value={task.parentId ?? ''}
+                      disabled={locked || subtasks.length > 0}
+                      onChange={(e) => save(() => api.changeTaskParent(task.id, e.target.value || null))}
+                    >
+                      <option value="">Nenhuma</option>
+                      {tasks
+                        .filter((t) => t.id !== task.id && !t.parentId)
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {keyPrefix}-{t.number} {t.title}
+                          </option>
+                        ))}
+                    </select>
+                    {subtasks.length > 0 && <span className="field__hint">Tem subtarefas, então não pode virar subtarefa.</span>}
                   </dd>
 
                   <dt>Responsável</dt>

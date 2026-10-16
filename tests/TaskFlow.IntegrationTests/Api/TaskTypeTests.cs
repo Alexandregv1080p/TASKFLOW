@@ -143,6 +143,23 @@ public class TaskTypeTests(DatabaseFixture db) : IAsyncLifetime
                 new { title = "Fora", priority = "Low", parentId }),
             HttpStatusCode.BadRequest);
 
+        // Tarefa existente vira subtarefa, e volta a ser comum; as duas mudanças entram no histórico.
+        var loose = await CreateTaskAsync(_owner, new { title = "Emitir nota", priority = "Low" });
+        var looseId = loose.GetProperty("id").GetString();
+        var moved = await _member.PatchAsJsonAsync($"/api/tasks/{looseId}/parent", new { parentId });
+        Assert.Equal(parentId, (await moved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("parentId").GetString());
+
+        // Quem tem subtarefas não vira subtarefa; nem a tarefa vira pai de si mesma.
+        await ApiTests.AssertErrorAsync(
+            await _owner.PatchAsJsonAsync($"/api/tasks/{parentId}/parent", new { parentId = looseId }), HttpStatusCode.BadRequest);
+        await ApiTests.AssertErrorAsync(
+            await _owner.PatchAsJsonAsync($"/api/tasks/{looseId}/parent", new { parentId = looseId }), HttpStatusCode.BadRequest);
+
+        var detached = await _owner.PatchAsJsonAsync($"/api/tasks/{looseId}/parent", new { parentId = (string?)null });
+        Assert.Equal(JsonValueKind.Null, (await detached.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("parentId").ValueKind);
+        var events = await _owner.GetFromJsonAsync<JsonElement>($"/api/tasks/{looseId}/history");
+        Assert.Equal(2, events.EnumerateArray().Count(e => e.GetProperty("type").GetString() == "ParentChanged"));
+
         Assert.Equal(HttpStatusCode.NoContent, (await _owner.DeleteAsync($"/api/tasks/{parentId}")).StatusCode);
         await ApiTests.AssertErrorAsync(await _owner.GetAsync($"/api/tasks/{child.GetProperty("id").GetString()}"), HttpStatusCode.NotFound);
     }

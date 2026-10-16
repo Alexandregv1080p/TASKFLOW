@@ -77,6 +77,10 @@ public class TasksController(TaskService tasks) : ControllerBase
     public Task<TaskResponse> ChangeStatus(Guid id, ChangeTaskStatusRequest request, CancellationToken ct) =>
         tasks.ChangeStatusAsync(id, request, ct);
 
+    [HttpPatch("tasks/{id:guid}/parent")]
+    public Task<TaskResponse> ChangeParent(Guid id, ChangeTaskParentRequest request, CancellationToken ct) =>
+        tasks.ChangeParentAsync(id, request, ct);
+
     [HttpPatch("tasks/{id:guid}/type")]
     public Task<TaskResponse> ChangeType(Guid id, ChangeTaskTypeRequest request, CancellationToken ct) =>
         tasks.ChangeTypeAsync(id, request, ct);

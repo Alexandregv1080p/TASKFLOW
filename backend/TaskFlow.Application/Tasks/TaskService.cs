@@ -196,6 +196,34 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         return await ResponseAsync(task, ct);
     }
 
+    // Transforma uma tarefa existente em subtarefa (ou o contrário). Um nível só: quem já tem subtarefas
+    // não vira subtarefa, e o pai não pode ser uma subtarefa (regra no domínio).
+    public async Task<TaskResponse> ChangeParentAsync(Guid id, ChangeTaskParentRequest request, CancellationToken ct = default)
+    {
+        var task = await FindForWriteAsync(id, ct);
+        var oldParent = task.ParentId;
+
+        if (request.ParentId is { } parentId)
+        {
+            if (await db.Tasks.AnyAsync(t => t.ParentId == task.Id, ct))
+                throw new DomainException("A task that has subtasks cannot become a subtask.");
+
+            task.MakeSubtaskOf(await FindAsync(parentId, ct));
+        }
+        else
+        {
+            task.DetachFromParent();
+        }
+
+        if (task.ParentId != oldParent)
+            Record(task, TaskEventType.ParentChanged, oldParent?.ToString(), task.ParentId?.ToString());
+
+        await db.SaveChangesAsync(ct);
+        await live.ChangedAsync(task.ProjectId, task.Id);
+
+        return await ResponseAsync(task, ct);
+    }
+
     // Estrela: marcação pessoal. Marcar duas vezes ou desmarcar o que não está marcado não é erro.
     public async Task<TaskResponse> SetStarAsync(Guid id, bool starred, CancellationToken ct = default)
     {

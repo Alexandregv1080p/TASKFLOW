@@ -59,5 +59,16 @@ test('tipos do projeto, responsável na criação e subtarefas', async ({ page, 
   await page.getByLabel('Título').fill('Reunião de alinhamento')
   await page.getByLabel('Tipo').selectOption({ label: 'Sem tipo' })
   await page.getByRole('button', { name: 'Adicionar' }).click()
-  await expect(page.getByRole('dialog', { name: /CHE-3 Reunião de alinhamento/ }).getByLabel('Tipo')).toHaveValue('')
+  const meeting = page.getByRole('dialog', { name: /CHE-3 Reunião de alinhamento/ })
+  await expect(meeting.getByLabel('Tipo')).toHaveValue('')
+
+  // Tarefa que já existia vira subtarefa pelo campo "Tarefa-pai".
+  await meeting.getByLabel('Tarefa-pai').selectOption({ label: 'CHE-1 Pagamento com Pix' })
+  await expect(meeting.getByText('tornou esta tarefa subtarefa de')).toBeVisible()
+  await meeting.getByRole('link', { name: 'CHE-1' }).click()
+
+  const parentDetail = page.getByRole('dialog', { name: /CHE-1 Pagamento com Pix/ })
+  await expect(parentDetail.getByText(/1\s*de 2 concluídas/)).toBeVisible()
+  // Quem tem subtarefas não pode virar subtarefa.
+  await expect(parentDetail.getByLabel('Tarefa-pai')).toBeDisabled()
 })

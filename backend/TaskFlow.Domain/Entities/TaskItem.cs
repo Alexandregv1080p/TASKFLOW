@@ -86,6 +86,9 @@ public class TaskItem : Entity
         ParentId = parent.Id;
     }
 
+    // Volta a ser uma tarefa comum (sem tarefa-pai).
+    public void DetachFromParent() => ParentId = null;
+
     // Fluxo do MVP: Todo <-> InProgress <-> Done, um passo por vez (sem pular etapas).
     public void ChangeStatus(TaskItemStatus status)
     {
