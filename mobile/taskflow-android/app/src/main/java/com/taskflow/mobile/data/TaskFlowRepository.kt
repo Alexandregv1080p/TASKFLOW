@@ -35,6 +35,14 @@ class TaskFlowRepository(private val api: TaskFlowApi, private val session: Sess
     suspend fun changeStatus(taskId: String, status: TaskStatus) = call { api.changeStatus(taskId, StatusRequest(status)) }
     suspend fun assign(taskId: String, userId: String?) = call { api.assign(taskId, AssignRequest(userId)) }
     suspend fun taskTypes(projectId: String) = call { api.taskTypes(projectId) }
+    suspend fun createTaskType(projectId: String, name: String, color: String) =
+        call { api.createTaskType(projectId, TaskTypeRequest(name.trim(), color)) }
+    suspend fun updateTaskType(id: String, name: String, color: String) = call { api.updateTaskType(id, TaskTypeRequest(name.trim(), color)) }
+    suspend fun deleteTaskType(id: String) = call { api.deleteTaskType(id) }
+
+    // Subtarefa nova: herda o tipo da tarefa-pai; prioridade e o resto se ajustam depois.
+    suspend fun createSubtask(parent: Task, title: String) =
+        call { api.createTask(parent.projectId, CreateTaskRequest(title.trim(), TaskPriority.Medium, typeId = parent.typeId, parentId = parent.id)) }
     suspend fun changeType(taskId: String, typeId: String?) = call { api.changeType(taskId, TypeRequest(typeId)) }
     suspend fun changeParent(taskId: String, parentId: String?) = call { api.changeParent(taskId, ParentRequest(parentId)) }
     suspend fun comments(taskId: String) = call { api.comments(taskId) }

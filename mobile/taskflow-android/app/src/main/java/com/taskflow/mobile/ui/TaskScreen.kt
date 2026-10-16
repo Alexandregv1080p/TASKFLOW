@@ -114,6 +114,11 @@ class TaskViewModel(
 
     fun changeParent(parentId: String?) = act { repository.changeParent(taskId, parentId) }
 
+    fun createSubtask(parent: Task, title: String, onCreated: () -> Unit) = act {
+        repository.createSubtask(parent, title)
+        onCreated()
+    }
+
     fun comment(body: String, onSent: () -> Unit) = act {
         repository.addComment(taskId, body)
         onSent()
@@ -226,11 +231,14 @@ private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: Ta
             Text(task.description ?: "Sem descrição.", color = if (task.description == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
         }
 
-        if (task.parentId == null && subtasks.isNotEmpty()) {
+        // Um nível só: subtarefa não tem a seção.
+        if (task.parentId == null && (subtasks.isNotEmpty() || !readOnly)) {
             Section("Subtarefas") {
-                val done = subtasks.count { it.status == TaskStatus.Done }
-                Text("$done de ${subtasks.size} concluídas", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                LinearProgressIndicator(progress = { done.toFloat() / subtasks.size }, modifier = Modifier.fillMaxWidth())
+                if (subtasks.isNotEmpty()) {
+                    val done = subtasks.count { it.status == TaskStatus.Done }
+                    Text("$done de ${subtasks.size} concluídas", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    LinearProgressIndicator(progress = { done.toFloat() / subtasks.size }, modifier = Modifier.fillMaxWidth())
+                }
                 subtasks.forEach { sub ->
                     Row(
                         Modifier.fillMaxWidth().clickable { openTask(sub.id) }.padding(vertical = 8.dp),
@@ -243,6 +251,7 @@ private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: Ta
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                 }
+                if (!readOnly) SubtaskComposer { title, onCreated -> viewModel.createSubtask(task, title, onCreated) }
             }
         }
 
@@ -318,6 +327,23 @@ private fun PickerField(
             }
         }
     }
+}
+
+// Nova subtarefa pelo título; o campo limpa quando a API confirma.
+@Composable
+private fun SubtaskComposer(onCreate: (title: String, onCreated: () -> Unit) -> Unit) {
+    var title by rememberSaveable { mutableStateOf("") }
+
+    OutlinedTextField(
+        value = title,
+        onValueChange = { title = it.take(200) },
+        placeholder = { Text("Nova subtarefa") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        trailingIcon = {
+            TextButton(onClick = { onCreate(title) { title = "" } }, enabled = title.isNotBlank()) { Text("Criar") }
+        },
+    )
 }
 
 // Comentário com @: enquanto o texto termina em "@começo", sugere as pessoas do projeto.

@@ -1,9 +1,11 @@
 package com.taskflow.mobile.data
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -38,6 +40,18 @@ interface TaskFlowApi {
 
     @GET("api/projects/{id}/task-types")
     suspend fun taskTypes(@Path("id") projectId: String): List<TaskType>
+
+    @POST("api/projects/{id}/task-types")
+    suspend fun createTaskType(@Path("id") projectId: String, @Body request: TaskTypeRequest): TaskType
+
+    @PUT("api/task-types/{id}")
+    suspend fun updateTaskType(@Path("id") id: String, @Body request: TaskTypeRequest): TaskType
+
+    @DELETE("api/task-types/{id}")
+    suspend fun deleteTaskType(@Path("id") id: String)
+
+    @POST("api/projects/{id}/tasks")
+    suspend fun createTask(@Path("id") projectId: String, @Body request: CreateTaskRequest): Task
 
     @PATCH("api/tasks/{id}/type")
     suspend fun changeType(@Path("id") id: String, @Body request: TypeRequest): Task

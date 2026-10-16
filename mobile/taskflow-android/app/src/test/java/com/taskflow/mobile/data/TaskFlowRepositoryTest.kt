@@ -126,6 +126,31 @@ class TaskFlowRepositoryTest {
     }
 
     @Test
+    fun `subtarefa nova herda o tipo do pai e tipos sao gerenciados pela API`() = runTest {
+        session.signIn(Session("jwt", "u1", "Ana"))
+        val parent = Task("t1", "p1", 1, "Checkout", status = TaskStatus.Todo, priority = TaskPriority.High, createdAt = "2026-10-16T10:00:00Z", typeId = "ty1")
+        server.enqueue(json(201, """{"id":"t2","projectId":"p1","number":2,"title":"QR","status":"Todo","priority":"Medium","createdAt":"2026-10-16T10:00:00Z","typeId":"ty1","parentId":"t1"}"""))
+        server.enqueue(json(201, """{"id":"ty2","name":"Melhoria","color":"#22A06B"}"""))
+        server.enqueue(json(200, """{"id":"ty2","name":"Melhorias","color":"#22A06B"}"""))
+        server.enqueue(MockResponse().setResponseCode(204))
+
+        assertEquals("t1", repository.createSubtask(parent, " QR ").parentId)
+        val create = server.takeRequest()
+        assertEquals("/api/projects/p1/tasks", create.path)
+        assertEquals("""{"title":"QR","priority":"Medium","typeId":"ty1","parentId":"t1"}""", create.body.readUtf8())
+
+        assertEquals("Melhoria", repository.createTaskType("p1", "Melhoria ", "#22A06B").name)
+        val newType = server.takeRequest()
+        assertEquals("POST /api/projects/p1/task-types", "${newType.method} ${newType.path}")
+        assertEquals("""{"name":"Melhoria","color":"#22A06B"}""", newType.body.readUtf8())
+
+        repository.updateTaskType("ty2", "Melhorias", "#22A06B")
+        assertEquals("PUT /api/task-types/ty2", server.takeRequest().let { "${it.method} ${it.path}" })
+        repository.deleteTaskType("ty2")
+        assertEquals("DELETE /api/task-types/ty2", server.takeRequest().let { "${it.method} ${it.path}" })
+    }
+
+    @Test
     fun `remover responsavel manda o corpo sem userId`() = runTest {
         session.signIn(Session("jwt", "u1", "Ana"))
         server.enqueue(

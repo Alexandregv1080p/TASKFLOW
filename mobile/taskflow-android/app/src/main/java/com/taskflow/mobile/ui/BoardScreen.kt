@@ -92,7 +92,14 @@ class BoardViewModel(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BoardScreen(viewModel: BoardViewModel, live: LiveUpdates, onBack: () -> Unit, openTask: (String) -> Unit) {
+fun BoardScreen(
+    viewModel: BoardViewModel,
+    live: LiveUpdates,
+    currentUserId: String,
+    onBack: () -> Unit,
+    openTask: (String) -> Unit,
+    openTypes: () -> Unit,
+) {
     val state by viewModel.state.collectAsState()
     val refreshing by viewModel.refreshing.collectAsState()
     val message by viewModel.message.collectAsState()
@@ -115,6 +122,11 @@ fun BoardScreen(viewModel: BoardViewModel, live: LiveUpdates, onBack: () -> Unit
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar") }
                 },
                 actions = {
+                    // Só o dono gerencia os tipos (a API responde 403 para os outros).
+                    val project = (state as? Load.Ready)?.data?.project
+                    if (project != null && project.ownerId == currentUserId && project.archivedAt == null) {
+                        TextButton(onClick = openTypes) { Text("Tipos") }
+                    }
                     if (connected) Text("● Ao vivo", color = Done, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(end = 16.dp))
                 },
             )

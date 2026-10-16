@@ -47,7 +47,7 @@ data class ProjectSummary(
 )
 
 @Serializable
-data class Project(val id: String, val name: String, val archivedAt: String? = null)
+data class Project(val id: String, val name: String, val ownerId: String = "", val archivedAt: String? = null)
 
 @Serializable
 data class Task(
@@ -88,6 +88,18 @@ data class CommentRequest(val body: String)
 
 @Serializable
 data class TypeRequest(val typeId: String?)
+
+@Serializable
+data class TaskTypeRequest(val name: String, val color: String)
+
+@Serializable
+data class CreateTaskRequest(
+    val title: String,
+    // Sem valor padrão de propósito: o kotlinx.serialization não envia campos com valor padrão.
+    val priority: TaskPriority,
+    val typeId: String? = null,
+    val parentId: String? = null,
+)
 
 @Serializable
 data class ParentRequest(val parentId: String?)

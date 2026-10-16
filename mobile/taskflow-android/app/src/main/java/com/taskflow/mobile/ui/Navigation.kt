@@ -63,9 +63,15 @@ fun TaskFlowNavigation(app: TaskFlowApp) {
             BoardScreen(
                 viewModel { BoardViewModel(app.repository, app.live, projectId) },
                 app.live,
+                currentUserId = current.userId,
                 onBack = { nav.popBackStack() },
                 openTask = { nav.navigate("task/$projectId/$it") },
+                openTypes = { nav.navigate("types/$projectId") },
             )
+        }
+        composable("types/{projectId}") { entry ->
+            val projectId = entry.arguments?.getString("projectId").orEmpty()
+            TypesScreen(viewModel { TypesViewModel(app.repository, app.live, projectId) }, onBack = { nav.popBackStack() })
         }
         composable("task/{projectId}/{taskId}") { entry ->
             val projectId = entry.arguments?.getString("projectId").orEmpty()

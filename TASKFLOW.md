@@ -2308,7 +2308,7 @@ PATCH  /api/tasks/{id}/type                   { "typeId": "..." | null }   (quem
 * No card: "1/3" para quem tem subtarefas e "↳ WEB-1" para quem é subtarefa.
 
 * **Testes:** `TaskTypeAndSubtaskTests` (domínio: cor, tipos padrão, regras de subtarefa) e `TaskTypeTests` (API: padrões, permissões, conflito de nome, tipo trocado no histórico, tipo excluído, responsável e tipo de fora do projeto, subtarefas e cascata), mais o E2E `types-subtasks.spec.ts`.
-* **Fora do escopo por ora:** colunas configuráveis por projeto; criar subtarefa e gerenciar tipos pelo app Android (no app dá para ver e trocar tipo e tarefa-pai).
+* **Fora do escopo por ora:** colunas configuráveis por projeto.
 
 ### App Android
 
@@ -2320,17 +2320,18 @@ App companheiro em `mobile/taskflow-android`, feito para o uso do dia a dia no c
 | Para você | abas Recomendado, Atribuído a mim e Com estrela |
 | Projetos | lista com espaço e progresso |
 | Quadro | uma coluna por vez em abas (A fazer, Em andamento, Concluído), mover pelos botões do card, selo do tipo, "1/2 subtarefas" e "↳ WEB-1", indicador "Ao vivo" |
-| Tarefa | status, responsável ("Atribuir a mim"), tipo, tarefa-pai, subtarefas com progresso, descrição e comentários com sugestão de `@` e menções destacadas |
+| Tarefa | status, responsável ("Atribuir a mim"), tipo, tarefa-pai, subtarefas com progresso e criação de subtarefa pelo título, descrição e comentários com sugestão de `@` e menções destacadas |
 | Notificações | lista com não lidas, contador na barra inferior, toque abre a tarefa |
+| Tipos de tarefa | só para o dono (botão "Tipos" no quadro): criar, renomear, trocar a cor e excluir; a cor vem de uma paleta de 8 cores, porque o Android não tem seletor de cor nativo (uma cor escolhida no site e fora da paleta é mantida) |
 
 * **Stack:** Kotlin, Jetpack Compose (Material 3), Navigation Compose, Retrofit + OkHttp + kotlinx.serialization, cliente SignalR para Java. MVVM com injeção de dependência manual (três objetos na `Application`), sem framework.
 * **Tempo real:** uma conexão por app, aberta enquanto há sessão e refeita a cada 5 s se cair. Quadro e tarefa entram no grupo do projeto (contagem de quem está olhando, para sair só quando a última tela fecha). Os avisos não trazem dados: as telas recarregam pela API, como no site.
 * **Sessão:** o token (JWT de 60 min) fica em SharedPreferences privadas, fora de backup (`allowBackup=false`). Um 401 encerra a sessão e volta ao login.
 * **Rede:** release só HTTPS; o build debug libera HTTP para falar com o compose local. O endereço vem de `taskflow.apiUrl` em `gradle.properties` (padrão `http://10.0.2.2:3200/`, o localhost visto pelo emulador).
 * **Mesmas regras do site:** a sigla do projeto e a chave da tarefa (`projectKey`), os nomes de status, as transições de uma coluna por vez e a regra de menção foram portados e têm testes com os mesmos casos.
-* **Testes:** 12 testes JUnit (incluindo cor do tipo e mudança de tarefa-pai): `FormatTest` (sigla, transições, menções, iniciais) e `TaskFlowRepositoryTest` com MockWebServer (login guarda a sessão e manda o token, senha errada, token vencido encerra a sessão, mensagens de erro, corpo do PATCH). No CI, o job Android roda testes, lint e gera o APK de debug como artefato.
+* **Testes:** 13 testes JUnit (incluindo cor do tipo, paleta, mudança de tarefa-pai, criação de subtarefa e gerenciamento de tipos): `FormatTest` (sigla, transições, menções, iniciais) e `TaskFlowRepositoryTest` com MockWebServer (login guarda a sessão e manda o token, senha errada, token vencido encerra a sessão, mensagens de erro, corpo do PATCH). No CI, o job Android roda testes, lint e gera o APK de debug como artefato.
 * **Verificação manual:** rodado no emulador (Pixel 6a, API 35) contra a stack local: login, Para você, quadro, card movido por outra pessoa aparecendo sozinho, comentário com menção que notifica a colega, e notificação nova chegando ao vivo.
-* **Fora do escopo por ora:** criar projetos e tarefas pelo app (feito no site), espaços, metas, dashboards e busca; push notification com o app fechado (pede Firebase/FCM); conexão desligada em segundo plano (hoje fica aberta enquanto o processo vive).
+* **Fora do escopo por ora:** criar projetos e tarefas soltas pelo app (subtarefas sim), espaços, metas, dashboards e busca; push notification com o app fechado (pede Firebase/FCM); conexão desligada em segundo plano (hoje fica aberta enquanto o processo vive).
 
 ### Layout
 

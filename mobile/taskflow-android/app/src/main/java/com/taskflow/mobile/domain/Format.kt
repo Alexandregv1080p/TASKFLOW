@@ -66,6 +66,9 @@ private val dateTime = DateTimeFormatter.ofPattern("d MMM, HH:mm", Locale.forLan
 fun formatDateTime(iso: String): String =
     runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(ZoneId.systemDefault()).format(dateTime) }.getOrDefault(iso)
 
+// Cores oferecidas no app para os tipos (o site aceita qualquer uma): as três padrão do projeto e outras da paleta do site.
+val TYPE_PALETTE = listOf("#1868DB", "#C9372C", "#6E5DC6", "#22A06B", "#CF7A00", "#1D7F8C", "#E774BB", "#626F86")
+
 // Cor do tipo (#RRGGBB) como ARGB opaco; nulo se vier num formato inesperado.
 fun hexColor(hex: String): Long? =
     Regex("^#([0-9A-Fa-f]{6})$").find(hex)?.let { 0xFF000000L or it.groupValues[1].toLong(16) }

@@ -3,6 +3,7 @@ package com.taskflow.mobile.domain
 import com.taskflow.mobile.data.TaskStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FormatTest {
@@ -51,6 +52,9 @@ class FormatTest {
         assertEquals(0xFF1868DBL, hexColor("#1868db"))
         assertNull(hexColor("azul"))
         assertNull(hexColor("#FFF"))
+        // Toda cor da paleta do app é aceita pela API (#RRGGBB) e não se repete.
+        assertTrue(TYPE_PALETTE.all { hexColor(it) != null })
+        assertEquals(TYPE_PALETTE.size, TYPE_PALETTE.toSet().size)
     }
 
     @Test
