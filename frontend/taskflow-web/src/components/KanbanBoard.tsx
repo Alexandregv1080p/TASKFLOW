@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from 'react'
-import type { Task, TaskInput, TaskStatus, UserSummary } from '../types'
+import type { Task, TaskInput, TaskStatus, TaskType, UserSummary } from '../types'
 import { STATUSES, STATUS_LABEL } from '../utils/format'
 import { TaskCard } from './TaskCard'
 import { TaskComposer } from './TaskComposer'
@@ -8,6 +8,8 @@ interface Props {
   tasks: Task[]
   keyPrefix: string
   usersById: Map<string, UserSummary>
+  types: TaskType[]
+  currentUserId: string | undefined
   busyTaskId: string | null
   // Projeto arquivado: sem criar, mover ou excluir.
   readOnly: boolean
@@ -21,7 +23,7 @@ function canMove(task: Task, status: TaskStatus): boolean {
   return Math.abs(STATUSES.indexOf(status) - STATUSES.indexOf(task.status)) === 1
 }
 
-export function KanbanBoard({ tasks, keyPrefix, usersById, busyTaskId, readOnly, onCreate, onMove, onDelete }: Props) {
+export function KanbanBoard({ tasks, keyPrefix, usersById, types, currentUserId, busyTaskId, readOnly, onCreate, onMove, onDelete }: Props) {
   // ponytail: drag-and-drop nativo (HTML5) não dispara em telas de toque; lá, e no teclado,
   // os botões de seta do card fazem o mesmo. Trocar por pointer events se o toque virar requisito.
   const [dragging, setDragging] = useState<Task | null>(null)
@@ -80,6 +82,10 @@ export function KanbanBoard({ tasks, keyPrefix, usersById, busyTaskId, readOnly,
                   task={task}
                   taskKey={`${keyPrefix}-${task.number}`}
                   assignee={task.assignedToId ? usersById.get(task.assignedToId) : undefined}
+                  type={types.find((t) => t.id === task.typeId)}
+                  subtasks={tasks.filter((t) => t.parentId === task.id)}
+                  parent={task.parentId ? tasks.find((t) => t.id === task.parentId) : undefined}
+                  keyPrefix={keyPrefix}
                   busy={busyTaskId === task.id}
                   readOnly={readOnly}
                   dragging={dragging?.id === task.id}
@@ -91,7 +97,7 @@ export function KanbanBoard({ tasks, keyPrefix, usersById, busyTaskId, readOnly,
               ))}
 
               {status === 'Todo' && !readOnly ? (
-                <TaskComposer onSubmit={onCreate} />
+                <TaskComposer onSubmit={onCreate} types={types} users={[...usersById.values()]} currentUserId={currentUserId} />
               ) : (
                 column.length === 0 && <p className="kanban__empty">Nenhuma tarefa</p>
               )}

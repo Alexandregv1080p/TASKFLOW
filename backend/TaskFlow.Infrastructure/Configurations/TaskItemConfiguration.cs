@@ -38,6 +38,18 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             .HasForeignKey(t => t.CreatedById)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Tipo excluído: as tarefas dele ficam sem tipo.
+        builder.HasOne<TaskType>()
+            .WithMany()
+            .HasForeignKey(t => t.TypeId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Excluir a tarefa-pai exclui as subtarefas, como no Jira.
+        builder.HasOne<TaskItem>()
+            .WithMany()
+            .HasForeignKey(t => t.ParentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Número único dentro do projeto; o índice também atende as buscas por ProjectId.
         builder.HasIndex(t => new { t.ProjectId, t.Number }).IsUnique();
     }

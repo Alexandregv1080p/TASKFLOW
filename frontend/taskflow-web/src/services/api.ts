@@ -21,6 +21,7 @@ import type {
   TaskEvent,
   TaskInput,
   TaskStatus,
+  TaskType,
   User,
 } from '../types'
 
@@ -151,6 +152,13 @@ export const api = {
 
   setTaskStar: (id: string, starred: boolean) => request<Task>(`/tasks/${id}/star`, starred ? 'PUT' : 'DELETE'),
   markTaskViewed: (id: string) => request<void>(`/tasks/${id}/view`, 'POST'),
+
+  listTaskTypes: (projectId: string) => request<TaskType[]>(`/projects/${projectId}/task-types`),
+  createTaskType: (projectId: string, input: { name: string; color: string }) =>
+    request<TaskType>(`/projects/${projectId}/task-types`, 'POST', input),
+  updateTaskType: (id: string, input: { name: string; color: string }) => request<TaskType>(`/task-types/${id}`, 'PUT', input),
+  deleteTaskType: (id: string) => request<void>(`/task-types/${id}`, 'DELETE'),
+  changeTaskType: (id: string, typeId: string | null) => request<Task>(`/tasks/${id}/type`, 'PATCH', { typeId }),
 
   listTasks: (projectId: string) => request<Task[]>(`/projects/${projectId}/tasks`),
   createTask: (projectId: string, input: TaskInput) => request<Task>(`/projects/${projectId}/tasks`, 'POST', input),

@@ -153,6 +153,16 @@ export interface Task {
   createdAt: string
   // Se eu marquei a tarefa com estrela.
   starred: boolean
+  typeId: string | null
+  // Tarefa-pai, quando esta é uma subtarefa.
+  parentId: string | null
+}
+
+// Tipo da tarefa (Bug, Integração...): cada projeto tem os seus, criados pelo dono.
+export interface TaskType {
+  id: string
+  name: string
+  color: string
 }
 
 export type TaskEventType =
@@ -163,6 +173,7 @@ export type TaskEventType =
   | 'DueDateChanged'
   | 'StatusChanged'
   | 'AssigneeChanged'
+  | 'TypeChanged'
 
 // oldValue/newValue: nome de enum (status, prioridade), data yyyy-MM-dd, id do usuário (responsável) ou texto (título).
 export interface TaskEvent {
@@ -228,4 +239,8 @@ export interface TaskInput {
   description: string | null
   priority: TaskPriority
   dueDate: string | null
+  // Só na criação: tipo, tarefa-pai (subtarefa) e responsável.
+  typeId?: string | null
+  parentId?: string | null
+  assignedToId?: string | null
 }

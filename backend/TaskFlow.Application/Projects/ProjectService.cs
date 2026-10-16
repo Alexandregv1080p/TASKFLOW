@@ -16,6 +16,7 @@ public class ProjectService(ITaskFlowDbContext db, ICurrentUser currentUser, ILo
         var project = new Project(request.Name, request.Description, currentUser.UserId, request.SpaceId);
 
         db.Projects.Add(project);
+        db.TaskTypes.AddRange(TaskType.Defaults(project.Id));
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("ProjectCreated {ProjectId} {UserId}", project.Id, project.OwnerId);

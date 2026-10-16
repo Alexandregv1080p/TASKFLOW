@@ -17,6 +17,12 @@ public class TaskItem : Entity
     public Guid ProjectId { get; private set; }
     public Guid? AssignedToId { get; private set; }
 
+    // Tipo da tarefa (do mesmo projeto); nulo = sem tipo.
+    public Guid? TypeId { get; private set; }
+
+    // Tarefa-pai, quando esta é uma subtarefa. Um nível só, como no Jira: subtarefa não tem subtarefas.
+    public Guid? ParentId { get; private set; }
+
     // Sequencial dentro do projeto: forma a chave exibida (ex.: WEB-12).
     public int Number { get; private set; }
 
@@ -62,6 +68,23 @@ public class TaskItem : Entity
     public void AssignTo(Guid userId) => AssignedToId = Guard.NotEmpty(userId, "UserId");
 
     public void Unassign() => AssignedToId = null;
+
+    // A Application garante que o tipo é do mesmo projeto (precisa consultar o banco).
+    public void ChangeType(Guid? typeId) => TypeId = typeId == Guid.Empty ? null : typeId;
+
+    public void MakeSubtaskOf(TaskItem parent)
+    {
+        if (parent.Id == Id)
+            throw new DomainException("A task cannot be its own parent.");
+
+        if (parent.ProjectId != ProjectId)
+            throw new DomainException("A subtask must be in the same project as its parent.");
+
+        if (parent.ParentId is not null)
+            throw new DomainException("A subtask cannot have subtasks.");
+
+        ParentId = parent.Id;
+    }
 
     // Fluxo do MVP: Todo <-> InProgress <-> Done, um passo por vez (sem pular etapas).
     public void ChangeStatus(TaskItemStatus status)

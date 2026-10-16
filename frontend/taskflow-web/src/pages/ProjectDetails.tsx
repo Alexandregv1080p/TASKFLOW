@@ -4,6 +4,7 @@ import {
   ArrowLeftIcon,
   PencilSimpleIcon,
   TrashIcon,
+  TagIcon,
   UserPlusIcon,
 } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
@@ -15,10 +16,11 @@ import { KanbanBoard } from '../components/KanbanBoard'
 import { ProjectAvatar } from '../components/ProjectAvatar'
 import { ProjectForm } from '../components/ProjectForm'
 import { ProjectMembersDialog } from '../components/ProjectMembersDialog'
+import { TaskTypesDialog } from '../components/TaskTypesDialog'
 import { useAsync } from '../hooks/useAsync'
 import { useLive } from '../hooks/useLive'
 import { api } from '../services/api'
-import type { Project, ProjectInput, ProjectStatus, Task, TaskInput, TaskStatus, UserSummary } from '../types'
+import type { Project, ProjectInput, ProjectStatus, Task, TaskInput, TaskStatus, TaskType, UserSummary } from '../types'
 import { PROJECT_STATUSES, PROJECT_STATUS_LABEL, projectKey } from '../utils/format'
 
 // Compartilhado com o modal de detalhe da tarefa (rota filha).
@@ -29,8 +31,11 @@ export interface ProjectOutletContext {
   keyPrefix: string
   // Projeto arquivado: nada pode ser alterado.
   readOnly: boolean
+  types: TaskType[]
   replaceTask: (task: Task) => void
   removeTask: (id: string) => void
+  // Subtarefa criada no detalhe entra no quadro.
+  addTask: (task: Task) => void
   // Sobe a cada alteração feita por outra pessoa: o modal recarrega a atividade.
   liveVersion: number
 }
@@ -49,6 +54,7 @@ export function ProjectDetails() {
     'BoardChanged',
     () => {
       reload()
+      reloadTypes()
       setLiveVersion((v) => v + 1)
     },
     id,
@@ -57,6 +63,9 @@ export function ProjectDetails() {
   const { data: spaces } = useAsync(api.listSpaces, [])
   const [editing, setEditing] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
+  const [typesOpen, setTypesOpen] = useState(false)
+  // Tipos de tarefa do projeto (Bug, Integração...), à parte do quadro: mudam pouco e têm diálogo próprio.
+  const { data: types, reload: reloadTypes } = useAsync(() => api.listTaskTypes(id), [id])
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string>()
   const usersById = useMemo(() => new Map((data?.[2] ?? []).map((u) => [u.id, u])), [data])
@@ -73,7 +82,8 @@ export function ProjectDetails() {
   const done = tasks.filter((t) => t.status === 'Done').length
 
   const replaceTask = (task: Task) => setData(([p, t, u]) => [p, t.map((x) => (x.id === task.id ? task : x)), u])
-  const removeTask = (taskId: string) => setData(([p, t, u]) => [p, t.filter((x) => x.id !== taskId), u])
+  const removeTask = (taskId: string) => setData(([p, t, u]) => [p, t.filter((x) => x.id !== taskId && x.parentId !== taskId), u])
+  const addTask = (task: Task) => setData(([p, t, u]) => [p, [...t, task], u])
 
   async function run(action: () => Promise<void>, taskId: string | null = null) {
     setBusyTaskId(taskId)
@@ -114,7 +124,7 @@ export function ProjectDetails() {
   // Tarefa criada abre direto no detalhe, para completar descrição, responsável e prazo.
   async function createTask(input: TaskInput) {
     const task = await api.createTask(id, input)
-    setData(([p, t, u]) => [p, [...t, task], u])
+    addTask(task)
     navigate(`tasks/${task.id}`)
   }
 
@@ -130,7 +140,18 @@ export function ProjectDetails() {
     }, task.id)
   }
 
-  const outletContext: ProjectOutletContext = { project, tasks, users, keyPrefix, readOnly: archived, replaceTask, removeTask, liveVersion }
+  const outletContext: ProjectOutletContext = {
+    project,
+    tasks,
+    users,
+    keyPrefix,
+    readOnly: archived,
+    types: types ?? [],
+    replaceTask,
+    removeTask,
+    addTask,
+    liveVersion,
+  }
 
   return (
     <>
@@ -198,6 +219,10 @@ export function ProjectDetails() {
                       <UserPlusIcon size={16} aria-hidden="true" />
                       Compartilhar
                     </button>
+                    <button className="btn btn--ghost" onClick={() => setTypesOpen(true)}>
+                      <TagIcon size={16} aria-hidden="true" />
+                      Tipos
+                    </button>
                     <button className="btn btn--ghost" onClick={() => setEditing(true)}>
                       <PencilSimpleIcon size={16} aria-hidden="true" />
                       Editar
@@ -257,12 +282,18 @@ export function ProjectDetails() {
         tasks={tasks}
         keyPrefix={keyPrefix}
         usersById={usersById}
+        types={types ?? []}
+        currentUserId={user?.id}
         busyTaskId={busyTaskId}
         readOnly={archived}
         onCreate={createTask}
         onMove={moveTask}
         onDelete={deleteTask}
       />
+
+      {typesOpen && (
+        <TaskTypesDialog project={project} types={types ?? []} onClose={() => setTypesOpen(false)} onChanged={reloadTypes} />
+      )}
 
       {membersOpen && user && (
         <ProjectMembersDialog

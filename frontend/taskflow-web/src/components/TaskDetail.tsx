@@ -9,7 +9,7 @@ import {
   XIcon,
 } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import type { ProjectOutletContext } from '../pages/ProjectDetails'
 import { api } from '../services/api'
@@ -17,6 +17,7 @@ import type { Task, TaskInput, TaskPriority, TaskStatus } from '../types'
 import { PRIORITY_LABEL, STATUSES, STATUS_LABEL, formatDateTime } from '../utils/format'
 import { Avatar } from './Avatar'
 import { PriorityIcon } from './PriorityIcon'
+import { Subtasks } from './Subtasks'
 import { TaskActivity } from './TaskActivity'
 
 // Detalhe da tarefa em modal, no layout do Jira: conteúdo à esquerda, status e detalhes à direita.
@@ -24,7 +25,8 @@ export function TaskDetail() {
   const { taskId = '' } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { project, tasks, users, keyPrefix, readOnly, replaceTask, removeTask, liveVersion } = useOutletContext<ProjectOutletContext>()
+  const { project, tasks, users, keyPrefix, readOnly, types, replaceTask, removeTask, addTask, liveVersion } =
+    useOutletContext<ProjectOutletContext>()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [saving, setSaving] = useState(false)
   // Campos travados enquanto salva ou quando o projeto está arquivado.
@@ -107,6 +109,8 @@ export function TaskDetail() {
 
   const taskKey = task ? `${keyPrefix}-${task.number}` : ''
   const creator = task?.createdById ? users.find((u) => u.id === task.createdById) : undefined
+  const parent = task?.parentId ? tasks.find((t) => t.id === task.parentId) : undefined
+  const subtasks = task ? tasks.filter((t) => t.parentId === task.id) : []
 
   return (
     <dialog
@@ -130,6 +134,16 @@ export function TaskDetail() {
             <span className="breadcrumb__sep" aria-hidden="true">
               /
             </span>
+            {parent && (
+              <>
+                <Link to={`/projects/${project.id}/tasks/${parent.id}`} className="breadcrumb__item breadcrumb__link" title={parent.title}>
+                  {keyPrefix}-{parent.number}
+                </Link>
+                <span className="breadcrumb__sep" aria-hidden="true">
+                  /
+                </span>
+              </>
+            )}
             <span className="breadcrumb__item breadcrumb__item--current">
               <CheckSquareIcon size={15} weight="fill" className="breadcrumb__task-icon" aria-hidden="true" />
               {taskKey}
@@ -188,9 +202,17 @@ export function TaskDetail() {
                 )}
               </section>
 
+              {/* Um nível só: subtarefa não tem subtarefas. */}
+              {!task.parentId && (
+                <section className="task-detail__section">
+                  <h3>Subtarefas</h3>
+                  <Subtasks parent={task} subtasks={subtasks} keyPrefix={keyPrefix} users={users} readOnly={readOnly} onCreated={addTask} />
+                </section>
+              )}
+
               <section className="task-detail__section">
                 <h3>Atividade</h3>
-                <TaskActivity taskId={task.id} version={version + liveVersion} users={users} currentUserId={user?.id} readOnly={readOnly} />
+                <TaskActivity taskId={task.id} version={version + liveVersion} users={users} types={types} currentUserId={user?.id} readOnly={readOnly} />
               </section>
             </div>
 
@@ -208,6 +230,26 @@ export function TaskDetail() {
                 </summary>
 
                 <dl className="details-panel__grid">
+                  <dt>Tipo</dt>
+                  <dd>
+                    <div className="details-value">
+                      <select
+                        className="inline-select"
+                        aria-label="Tipo"
+                        value={task.typeId ?? ''}
+                        disabled={locked}
+                        onChange={(e) => save(() => api.changeTaskType(task.id, e.target.value || null))}
+                      >
+                        <option value="">Sem tipo</option>
+                        {types.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </dd>
+
                   <dt>Responsável</dt>
                   <dd>
                     <div className="details-value">

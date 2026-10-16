@@ -1458,6 +1458,164 @@ textarea {
   display: none;
 }
 
+/* Tipo da tarefa: a cor vem do dono do projeto (--type-color). */
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 0.45rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--type-color) 14%, transparent);
+  color: color-mix(in srgb, var(--type-color) 80%, var(--text));
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.task-card__parent,
+.task-card__subtasks {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.composer__me {
+  align-self: flex-start;
+  font-size: 0.78rem;
+}
+
+/* Subtarefas no detalhe da tarefa */
+
+.subtasks__progress {
+  max-width: none;
+  margin-bottom: 0.25rem;
+}
+
+.subtasks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.subtasks__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.subtasks__item + .subtasks__item {
+  border-top: 1px solid var(--border);
+}
+
+.subtasks__link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 0.5rem;
+  color: var(--text);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.subtasks__link:hover .subtasks__title {
+  text-decoration: underline;
+}
+
+.subtasks__key {
+  flex: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.subtasks__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtasks__title--done {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.subtasks__form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.subtasks__form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.subtasks__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+}
+
+.status-pill--task-todo {
+  --status-color: var(--todo);
+}
+
+.status-pill--task-inprogress {
+  --status-color: var(--inprogress);
+}
+
+.status-pill--task-done {
+  --status-color: var(--done);
+}
+
+.breadcrumb__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.breadcrumb__link:hover {
+  text-decoration: underline;
+}
+
+/* Diálogo de tipos de tarefa */
+
+.type-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.type-list__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.type-list__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.type-list__color {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  cursor: pointer;
+}
+
 .task-card__key {
   display: inline-flex;
   align-items: center;

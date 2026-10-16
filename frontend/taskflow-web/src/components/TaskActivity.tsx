@@ -2,7 +2,7 @@ import { ArrowRightIcon, TrashIcon } from '@phosphor-icons/react'
 import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useAsync } from '../hooks/useAsync'
 import { api } from '../services/api'
-import type { TaskComment, TaskEvent, TaskPriority, TaskStatus, UserSummary } from '../types'
+import type { TaskComment, TaskEvent, TaskPriority, TaskStatus, TaskType, UserSummary } from '../types'
 import { PRIORITY_LABEL, STATUS_LABEL, formatDate, formatDateTime } from '../utils/format'
 import { Avatar } from './Avatar'
 
@@ -11,6 +11,8 @@ interface Props {
   // Muda a cada alteração salva no modal, para recarregar o histórico.
   version: number
   users: UserSummary[]
+  // Para mostrar o nome do tipo nas trocas de tipo.
+  types: TaskType[]
   currentUserId: string | undefined
   // Projeto arquivado: sem comentar nem excluir comentário.
   readOnly: boolean
@@ -19,7 +21,7 @@ interface Props {
 type Entry = { kind: 'comment'; at: string; comment: TaskComment } | { kind: 'event'; at: string; event: TaskEvent }
 
 // Comentários e alterações em uma única linha do tempo, do mais recente para o mais antigo.
-export function TaskActivity({ taskId, version, users, currentUserId, readOnly }: Props) {
+export function TaskActivity({ taskId, version, users, types, currentUserId, readOnly }: Props) {
   const { data, error, reload, setData } = useAsync(
     () => Promise.all([api.taskHistory(taskId), api.listComments(taskId)]),
     [taskId, version],
@@ -98,7 +100,7 @@ export function TaskActivity({ taskId, version, users, currentUserId, readOnly }
                     </>
                   ) : (
                     <p className="activity__text">
-                      <strong>{author}</strong> {describe(entry.event, nameOf)}
+                      <strong>{author}</strong> {describe(entry.event, nameOf, (typeId) => types.find((t) => t.id === typeId)?.name)}
                     </p>
                   )}
 
@@ -258,7 +260,11 @@ function Change({ from, to }: { from: string; to: string }) {
   )
 }
 
-function describe(event: TaskEvent, nameOf: (id: string | null) => string | undefined): ReactNode {
+function describe(
+  event: TaskEvent,
+  nameOf: (id: string | null) => string | undefined,
+  typeOf: (id: string) => string | undefined,
+): ReactNode {
   const { oldValue, newValue } = event
 
   switch (event.type) {
@@ -293,6 +299,14 @@ function describe(event: TaskEvent, nameOf: (id: string | null) => string | unde
           alterou a data limite: <Change from={formatDate(oldValue)} to={formatDate(newValue)} />
         </>
       )
+    case 'TypeChanged': {
+      const label = (id: string | null) => (id ? (typeOf(id) ?? 'tipo excluído') : 'Sem tipo')
+      return (
+        <>
+          alterou o tipo: <Change from={label(oldValue)} to={label(newValue)} />
+        </>
+      )
+    }
     case 'AssigneeChanged':
       if (!newValue) return 'removeu o responsável'
       return (

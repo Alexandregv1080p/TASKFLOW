@@ -23,13 +23,33 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         var task = new TaskItem(
             projectId, number, currentUser.UserId, request.Title, request.Description, request.Priority, request.DueDate);
 
+        if (request.ParentId is { } parentId)
+            task.MakeSubtaskOf(await FindAsync(parentId, ct));
+
+        if (request.TypeId is { } typeId)
+            task.ChangeType(await EnsureTypeAsync(projectId, typeId, ct));
+
         db.Tasks.Add(task);
         Record(task, TaskEventType.Created);
+
+        // Já nasce com responsável: mesmo histórico e mesmo aviso de uma atribuição feita depois.
+        Guid[] notified = [];
+        if (request.AssignedToId is { } assigneeId)
+        {
+            if (!await db.IsProjectPersonAsync(projectId, assigneeId, ct))
+                throw new NotFoundException(nameof(User), assigneeId);
+
+            task.AssignTo(assigneeId);
+            Record(task, TaskEventType.AssigneeChanged, null, assigneeId.ToString());
+            notified = Notify(task, NotificationType.Assigned, [assigneeId]);
+        }
+
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("TaskCreated {TaskId} {ProjectId} {UserId}", task.Id, projectId, currentUser.UserId);
         TaskFlowMetrics.TasksCreated.Add(1);
         await live.ChangedAsync(projectId, task.Id);
+        await live.NotifiedAsync(notified);
 
         return TaskResponse.From(task, starred: false);
     }
@@ -160,6 +180,22 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         return await ResponseAsync(task, ct);
     }
 
+    public async Task<TaskResponse> ChangeTypeAsync(Guid id, ChangeTaskTypeRequest request, CancellationToken ct = default)
+    {
+        var task = await FindForWriteAsync(id, ct);
+        var oldType = task.TypeId;
+
+        task.ChangeType(request.TypeId is { } typeId ? await EnsureTypeAsync(task.ProjectId, typeId, ct) : null);
+
+        if (task.TypeId != oldType)
+            Record(task, TaskEventType.TypeChanged, oldType?.ToString(), task.TypeId?.ToString());
+
+        await db.SaveChangesAsync(ct);
+        await live.ChangedAsync(task.ProjectId, task.Id);
+
+        return await ResponseAsync(task, ct);
+    }
+
     // Estrela: marcação pessoal. Marcar duas vezes ou desmarcar o que não está marcado não é erro.
     public async Task<TaskResponse> SetStarAsync(Guid id, bool starred, CancellationToken ct = default)
     {
@@ -272,6 +308,12 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
 
         return recipients;
     }
+
+    // Tipo de outro projeto (ou inexistente) responde 404: não revela tipos de projetos alheios.
+    private async Task<Guid> EnsureTypeAsync(Guid projectId, Guid typeId, CancellationToken ct) =>
+        await db.TaskTypes.AnyAsync(t => t.Id == typeId && t.ProjectId == projectId, ct)
+            ? typeId
+            : throw new NotFoundException(nameof(TaskType), typeId);
 
     private static string? FormatDate(DateTime? date) => date?.ToString("yyyy-MM-dd");
 

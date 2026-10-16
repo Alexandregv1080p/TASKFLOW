@@ -16,6 +16,8 @@ public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : Db
 
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
 
+    public DbSet<TaskType> TaskTypes => Set<TaskType>();
+
     public DbSet<TaskEvent> TaskEvents => Set<TaskEvent>();
 
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();

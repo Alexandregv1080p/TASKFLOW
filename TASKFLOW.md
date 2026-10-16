@@ -2104,6 +2104,7 @@ Decisões:
 * [x] Busca global com Ctrl+K (além da spec original)
 * [x] Testes de ponta a ponta com Playwright, também no CI (além da spec original)
 * [x] App Android companheiro (Kotlin + Compose), com tempo real e notificações (além da spec original)
+* [x] Tipos de tarefa por projeto, responsável na criação e subtarefas (além da spec original)
 
 ### Para você (página inicial)
 
@@ -2277,6 +2278,36 @@ Quatro testes em `e2e/` usam o app como uma pessoa usaria, num Chromium de verda
 * **CI:** rodam no job Docker logo após o smoke test, contra as imagens recém-construídas; se falharem, o relatório com trace e screenshots é publicado como artefato.
 * **Estabilidade:** 20 execuções seguidas (`--repeat-each=5`) sem falha.
 * **Fora do escopo:** só Chromium (Firefox e WebKit ficam para quando houver motivo) e sem teste visual por screenshot.
+
+### Tipos de tarefa, responsável na criação e subtarefas
+
+Pedido do usuário: dizer por que o card existe (bug, integração, desenvolvimento...), com quem coordena o projeto decidindo quantos tipos houver; o card já nascer com responsável; e tarefas com subtarefas.
+
+**Tipos de tarefa (por projeto).** Cada projeto tem os próprios tipos, com nome e cor. Todo projeto novo (e os que já existiam, pela migration) nasce com Desenvolvimento, Bug e Integração. As colunas do quadro continuam A fazer / Em andamento / Concluído: tipo e status são coisas diferentes.
+
+```http
+GET    /api/projects/{id}/task-types          (quem está no projeto)
+POST   /api/projects/{id}/task-types          { "name": "Melhoria", "color": "#22A06B" }   (só o dono) → 201
+PUT    /api/task-types/{id}                   { "name", "color" }   (só o dono)
+DELETE /api/task-types/{id}                   (só o dono) → 204; as tarefas desse tipo ficam sem tipo
+PATCH  /api/tasks/{id}/type                   { "typeId": "..." | null }   (quem está no projeto)
+```
+
+* Nome único no projeto, sem diferenciar maiúsculas (409); cor em `#RRGGBB` (400). Membro tentando gerenciar: 403. Tipo de outro projeto: 404.
+* Trocar o tipo entra no histórico (`TypeChanged`) e avisa o quadro em tempo real.
+* No site: botão "Tipos" no cabeçalho do projeto (só o dono) abre o diálogo para criar, renomear, mudar a cor e excluir; o card mostra o selo colorido; o detalhe tem o campo "Tipo".
+
+**Responsável na criação.** `POST /api/projects/{id}/tasks` aceita `typeId`, `parentId` e `assignedToId`. O formulário "Nova tarefa" ganhou Tipo (padrão: o primeiro do projeto, ou "Sem tipo") e Responsável com "Atribuir a mim". Atribuir na criação gera o mesmo histórico e a mesma notificação de uma atribuição feita depois.
+
+**Subtarefas.** Uma subtarefa é uma tarefa comum do mesmo projeto com `parentId`, então aparece no quadro e tem status, responsável, comentários e histórico próprios.
+
+* Um nível só, como no Jira: subtarefa não tem subtarefas. Pai de outro projeto ou subtarefa como pai: 400.
+* Excluir a tarefa-pai exclui as subtarefas (FK em cascata).
+* No detalhe: seção "Subtarefas" com progresso ("1 de 3 concluídas"), lista com status e responsável, e "Criar subtarefa" pelo título (herda o tipo do pai). A subtarefa mostra o pai no caminho (Projeto / WEB-1 / WEB-4).
+* No card: "1/3" para quem tem subtarefas e "↳ WEB-1" para quem é subtarefa.
+
+* **Testes:** `TaskTypeAndSubtaskTests` (domínio: cor, tipos padrão, regras de subtarefa) e `TaskTypeTests` (API: padrões, permissões, conflito de nome, tipo trocado no histórico, tipo excluído, responsável e tipo de fora do projeto, subtarefas e cascata), mais o E2E `types-subtasks.spec.ts`.
+* **Fora do escopo por ora:** transformar uma tarefa existente em subtarefa (só na criação), colunas configuráveis por projeto, e o app Android ainda não mostra tipo nem subtarefas (ignora os campos novos sem quebrar).
 
 ### App Android
 

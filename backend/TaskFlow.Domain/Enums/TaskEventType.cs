@@ -8,5 +8,6 @@ public enum TaskEventType
     PriorityChanged,
     DueDateChanged,
     StatusChanged,
-    AssigneeChanged
+    AssigneeChanged,
+    TypeChanged
 }

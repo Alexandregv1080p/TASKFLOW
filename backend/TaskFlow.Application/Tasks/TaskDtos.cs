@@ -3,7 +3,15 @@ using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Application.Tasks;
 
-public record CreateTaskRequest(string Title, string? Description, TaskPriority Priority, DateTime? DueDate);
+// Tipo, tarefa-pai (para criar uma subtarefa) e responsável são opcionais.
+public record CreateTaskRequest(
+    string Title,
+    string? Description,
+    TaskPriority Priority,
+    DateTime? DueDate,
+    Guid? TypeId = null,
+    Guid? ParentId = null,
+    Guid? AssignedToId = null);
 
 public record UpdateTaskRequest(string Title, string? Description, TaskPriority Priority, DateTime? DueDate);
 
@@ -12,7 +20,11 @@ public record ChangeTaskStatusRequest(TaskItemStatus Status);
 // UserId nulo remove o responsável.
 public record AssignTaskRequest(Guid? UserId);
 
-// OldValue/NewValue: nomes de enum (status, prioridade), data yyyy-MM-dd, id do usuário (responsável) ou texto (título).
+// TypeId nulo deixa a tarefa sem tipo.
+public record ChangeTaskTypeRequest(Guid? TypeId);
+
+// OldValue/NewValue: nomes de enum (status, prioridade), data yyyy-MM-dd, id do usuário (responsável), id do tipo
+// ou texto (título).
 public record TaskEventResponse(Guid Id, TaskEventType Type, string? OldValue, string? NewValue, Guid? UserId, DateTime CreatedAt);
 
 public record AddCommentRequest(string Body);
@@ -35,9 +47,11 @@ public record TaskResponse(
     Guid? CreatedById,
     DateTime CreatedAt,
     // Se o usuário atual marcou a tarefa com estrela.
-    bool Starred)
+    bool Starred,
+    Guid? TypeId,
+    Guid? ParentId)
 {
     public static TaskResponse From(TaskItem t, bool starred) =>
         new(t.Id, t.ProjectId, t.Number, t.Title, t.Description, t.Status, t.Priority, t.DueDate,
-            t.AssignedToId, t.CreatedById, t.CreatedAt, starred);
+            t.AssignedToId, t.CreatedById, t.CreatedAt, starred, t.TypeId, t.ParentId);
 }

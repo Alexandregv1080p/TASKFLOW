@@ -95,6 +95,7 @@ public class SpaceService(
         {
             var project = new Project(templateProject.Name, templateProject.Description, userId, space.Id);
             db.Projects.Add(project);
+            db.TaskTypes.AddRange(TaskType.Defaults(project.Id));
 
             for (var i = 0; i < templateProject.Tasks.Count; i++)
             {

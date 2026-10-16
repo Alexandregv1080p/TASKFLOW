@@ -17,6 +17,8 @@ public interface ITaskFlowDbContext
 
     DbSet<TaskItem> Tasks { get; }
 
+    DbSet<TaskType> TaskTypes { get; }
+
     DbSet<TaskEvent> TaskEvents { get; }
 
     DbSet<TaskComment> TaskComments { get; }
