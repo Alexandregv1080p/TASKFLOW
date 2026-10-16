@@ -34,6 +34,9 @@ class TaskFlowRepository(private val api: TaskFlowApi, private val session: Sess
     suspend fun task(id: String) = call { api.task(id) }
     suspend fun changeStatus(taskId: String, status: TaskStatus) = call { api.changeStatus(taskId, StatusRequest(status)) }
     suspend fun assign(taskId: String, userId: String?) = call { api.assign(taskId, AssignRequest(userId)) }
+    suspend fun taskTypes(projectId: String) = call { api.taskTypes(projectId) }
+    suspend fun changeType(taskId: String, typeId: String?) = call { api.changeType(taskId, TypeRequest(typeId)) }
+    suspend fun changeParent(taskId: String, parentId: String?) = call { api.changeParent(taskId, ParentRequest(parentId)) }
     suspend fun comments(taskId: String) = call { api.comments(taskId) }
     suspend fun addComment(taskId: String, body: String) = call { api.addComment(taskId, CommentRequest(body.trim())) }
     suspend fun notifications() = call { api.notifications() }

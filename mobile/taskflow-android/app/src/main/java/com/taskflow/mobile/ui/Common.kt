@@ -27,6 +27,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.taskflow.mobile.data.ApiException
 import com.taskflow.mobile.data.TaskStatus
+import com.taskflow.mobile.data.TaskType
+import com.taskflow.mobile.domain.hexColor
+import androidx.compose.ui.graphics.Color
 import com.taskflow.mobile.domain.initials
 import com.taskflow.mobile.domain.label
 import com.taskflow.mobile.ui.theme.Done
@@ -114,6 +117,18 @@ fun Avatar(name: String, modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         Text(initials(name), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+    }
+}
+
+// Selo do tipo da tarefa, na cor escolhida pelo dono do projeto.
+@Composable
+fun TypeChip(type: TaskType) {
+    val color = hexColor(type.color)?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+    Row(
+        Modifier.clip(RoundedCornerShape(4.dp)).background(color.copy(alpha = 0.14f)).padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(type.name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color)
     }
 }
 

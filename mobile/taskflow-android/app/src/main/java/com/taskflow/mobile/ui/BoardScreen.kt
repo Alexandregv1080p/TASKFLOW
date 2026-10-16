@@ -50,6 +50,7 @@ import com.taskflow.mobile.data.Task
 import com.taskflow.mobile.data.TaskFlowRepository
 import com.taskflow.mobile.data.TaskPriority
 import com.taskflow.mobile.data.TaskStatus
+import com.taskflow.mobile.data.TaskType
 import com.taskflow.mobile.domain.label
 import com.taskflow.mobile.domain.moves
 import com.taskflow.mobile.domain.taskKey
@@ -60,7 +61,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
-data class Board(val project: Project, val tasks: List<Task>, val members: List<Member>)
+data class Board(val project: Project, val tasks: List<Task>, val members: List<Member>, val types: List<TaskType>)
 
 // Quadro de um projeto: recarrega sozinho quando alguém muda algo nele (tempo real).
 class BoardViewModel(
@@ -80,7 +81,8 @@ class BoardViewModel(
         val project = async { repository.project(projectId) }
         val tasks = async { repository.tasks(projectId) }
         val members = async { repository.members(projectId) }
-        Board(project.await(), tasks.await(), members.await())
+        val types = async { repository.taskTypes(projectId) }
+        Board(project.await(), tasks.await(), members.await(), types.await())
     }
 
     fun move(task: Task, status: TaskStatus) = act { repository.changeStatus(task.id, status) }
@@ -168,6 +170,9 @@ fun BoardScreen(viewModel: BoardViewModel, live: LiveUpdates, onBack: () -> Unit
                                     task = task,
                                     key = taskKey(board.project.name, task.number),
                                     assignee = board.members.firstOrNull { it.id == task.assignedToId }?.name,
+                                    type = board.types.firstOrNull { it.id == task.typeId },
+                                    subtasks = board.tasks.filter { it.parentId == task.id },
+                                    parentKey = task.parentId?.let { id -> board.tasks.firstOrNull { it.id == id } }?.let { taskKey(board.project.name, it.number) },
                                     readOnly = readOnly,
                                     onOpen = { openTask(task.id) },
                                     onMove = { viewModel.move(task, it) },
@@ -182,7 +187,17 @@ fun BoardScreen(viewModel: BoardViewModel, live: LiveUpdates, onBack: () -> Unit
 }
 
 @Composable
-private fun TaskCard(task: Task, key: String, assignee: String?, readOnly: Boolean, onOpen: () -> Unit, onMove: (TaskStatus) -> Unit) {
+private fun TaskCard(
+    task: Task,
+    key: String,
+    assignee: String?,
+    type: TaskType?,
+    subtasks: List<Task>,
+    parentKey: String?,
+    readOnly: Boolean,
+    onOpen: () -> Unit,
+    onMove: (TaskStatus) -> Unit,
+) {
     Card(
         onClick = onOpen,
         modifier = Modifier.fillMaxWidth(),
@@ -191,6 +206,19 @@ private fun TaskCard(task: Task, key: String, assignee: String?, readOnly: Boole
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(task.title, style = MaterialTheme.typography.bodyLarge)
+            if (type != null || parentKey != null || subtasks.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    type?.let { TypeChip(it) }
+                    parentKey?.let { Text("↳ $it", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    if (subtasks.isNotEmpty()) {
+                        Text(
+                            "${subtasks.count { it.status == TaskStatus.Done }}/${subtasks.size} subtarefas",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(key, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (task.priority == TaskPriority.High) Text("Prioridade alta", style = MaterialTheme.typography.labelMedium, color = High)

@@ -61,7 +61,14 @@ data class Task(
     val dueDate: String? = null,
     val assignedToId: String? = null,
     val createdAt: String,
+    val typeId: String? = null,
+    // Tarefa-pai, quando esta é uma subtarefa.
+    val parentId: String? = null,
 )
+
+// Tipo da tarefa (Bug, Integração...): cada projeto tem os seus, com cor em #RRGGBB.
+@Serializable
+data class TaskType(val id: String, val name: String, val color: String)
 
 @Serializable
 data class Member(val id: String, val name: String, val isOwner: Boolean = false)
@@ -78,6 +85,12 @@ data class AssignRequest(val userId: String?)
 
 @Serializable
 data class CommentRequest(val body: String)
+
+@Serializable
+data class TypeRequest(val typeId: String?)
+
+@Serializable
+data class ParentRequest(val parentId: String?)
 
 @Serializable
 enum class NotificationType { Assigned, Mentioned, Commented }

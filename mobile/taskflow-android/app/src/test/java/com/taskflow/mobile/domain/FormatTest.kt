@@ -47,6 +47,13 @@ class FormatTest {
     }
 
     @Test
+    fun `cor do tipo em hexadecimal`() {
+        assertEquals(0xFF1868DBL, hexColor("#1868db"))
+        assertNull(hexColor("azul"))
+        assertNull(hexColor("#FFF"))
+    }
+
+    @Test
     fun `iniciais do avatar`() {
         assertEquals("AS", initials("Ana Souza"))
         assertEquals("B", initials("bia"))

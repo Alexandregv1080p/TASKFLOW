@@ -103,6 +103,29 @@ class TaskFlowRepositoryTest {
     }
 
     @Test
+    fun `tipos do projeto e mudanca de tarefa-pai`() = runTest {
+        session.signIn(Session("jwt", "u1", "Ana"))
+        server.enqueue(json(200, """[{"id":"ty1","name":"Bug","color":"#C9372C"}]"""))
+        val task = """{"id":"t2","projectId":"p1","number":2,"title":"B","status":"Todo","priority":"Low","createdAt":"2026-10-16T10:00:00Z","typeId":"ty1","parentId":"t1"}"""
+        server.enqueue(json(200, task))
+        server.enqueue(json(200, task.replace("\"parentId\":\"t1\"", "\"parentId\":null")))
+
+        assertEquals("Bug", repository.taskTypes("p1").single().name)
+        assertEquals("/api/projects/p1/task-types", server.takeRequest().path)
+
+        val moved = repository.changeParent("t2", "t1")
+        assertEquals("t1", moved.parentId)
+        assertEquals("ty1", moved.typeId)
+        val request = server.takeRequest()
+        assertEquals("/api/tasks/t2/parent", request.path)
+        assertEquals("""{"parentId":"t1"}""", request.body.readUtf8())
+
+        // Voltar a ser tarefa comum: parentId nulo some do JSON, e a API entende como "sem pai".
+        assertNull(repository.changeParent("t2", null).parentId)
+        assertEquals("{}", server.takeRequest().body.readUtf8())
+    }
+
+    @Test
     fun `remover responsavel manda o corpo sem userId`() = runTest {
         session.signIn(Session("jwt", "u1", "Ana"))
         server.enqueue(

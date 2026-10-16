@@ -36,6 +36,15 @@ interface TaskFlowApi {
     @PATCH("api/tasks/{id}/status")
     suspend fun changeStatus(@Path("id") id: String, @Body request: StatusRequest): Task
 
+    @GET("api/projects/{id}/task-types")
+    suspend fun taskTypes(@Path("id") projectId: String): List<TaskType>
+
+    @PATCH("api/tasks/{id}/type")
+    suspend fun changeType(@Path("id") id: String, @Body request: TypeRequest): Task
+
+    @PATCH("api/tasks/{id}/parent")
+    suspend fun changeParent(@Path("id") id: String, @Body request: ParentRequest): Task
+
     @PATCH("api/tasks/{id}/assignee")
     suspend fun assign(@Path("id") id: String, @Body request: AssignRequest): Task
 

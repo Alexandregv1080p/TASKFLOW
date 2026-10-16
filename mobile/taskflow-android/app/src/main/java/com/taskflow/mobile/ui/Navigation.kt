@@ -74,6 +74,7 @@ fun TaskFlowNavigation(app: TaskFlowApp) {
                 viewModel { TaskViewModel(app.repository, app.live, projectId, taskId) },
                 currentUserId = current.userId,
                 onBack = { nav.popBackStack() },
+                openTask = { nav.navigate("task/$projectId/$it") },
             )
         }
     }

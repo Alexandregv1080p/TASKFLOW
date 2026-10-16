@@ -66,6 +66,10 @@ private val dateTime = DateTimeFormatter.ofPattern("d MMM, HH:mm", Locale.forLan
 fun formatDateTime(iso: String): String =
     runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(ZoneId.systemDefault()).format(dateTime) }.getOrDefault(iso)
 
+// Cor do tipo (#RRGGBB) como ARGB opaco; nulo se vier num formato inesperado.
+fun hexColor(hex: String): Long? =
+    Regex("^#([0-9A-Fa-f]{6})$").find(hex)?.let { 0xFF000000L or it.groupValues[1].toLong(16) }
+
 // Iniciais do avatar: "Ana Souza" -> AS.
 fun initials(name: String): String =
     name.split(' ').filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase(Locale.ROOT) }.ifEmpty { "?" }

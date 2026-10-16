@@ -56,6 +56,10 @@ import com.taskflow.mobile.data.Project
 import com.taskflow.mobile.data.Task
 import com.taskflow.mobile.data.TaskFlowRepository
 import com.taskflow.mobile.data.TaskStatus
+import com.taskflow.mobile.data.TaskType
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.text.style.TextOverflow
 import com.taskflow.mobile.domain.completeMention
 import com.taskflow.mobile.domain.formatDateTime
 import com.taskflow.mobile.domain.label
@@ -68,7 +72,15 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
-data class TaskDetail(val task: Task, val project: Project, val members: List<Member>, val comments: List<Comment>)
+// tasks: todas do projeto, para achar a tarefa-pai, as subtarefas e quem pode ser pai.
+data class TaskDetail(
+    val task: Task,
+    val project: Project,
+    val members: List<Member>,
+    val comments: List<Comment>,
+    val tasks: List<Task>,
+    val types: List<TaskType>,
+)
 
 class TaskViewModel(
     private val repository: TaskFlowRepository,
@@ -89,12 +101,18 @@ class TaskViewModel(
         val project = async { repository.project(projectId) }
         val members = async { repository.members(projectId) }
         val comments = async { repository.comments(taskId) }
-        TaskDetail(task.await(), project.await(), members.await(), comments.await())
+        val tasks = async { repository.tasks(projectId) }
+        val types = async { repository.taskTypes(projectId) }
+        TaskDetail(task.await(), project.await(), members.await(), comments.await(), tasks.await(), types.await())
     }
 
     fun move(status: TaskStatus) = act { repository.changeStatus(taskId, status) }
 
     fun assign(userId: String?) = act { repository.assign(taskId, userId) }
+
+    fun changeType(typeId: String?) = act { repository.changeType(taskId, typeId) }
+
+    fun changeParent(parentId: String?) = act { repository.changeParent(taskId, parentId) }
 
     fun comment(body: String, onSent: () -> Unit) = act {
         repository.addComment(taskId, body)
@@ -106,7 +124,7 @@ class TaskViewModel(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskScreen(viewModel: TaskViewModel, currentUserId: String, onBack: () -> Unit) {
+fun TaskScreen(viewModel: TaskViewModel, currentUserId: String, onBack: () -> Unit, openTask: (String) -> Unit) {
     val state by viewModel.state.collectAsState()
     val message by viewModel.message.collectAsState()
     val snackbar = remember { SnackbarHostState() }
@@ -132,7 +150,7 @@ fun TaskScreen(viewModel: TaskViewModel, currentUserId: String, onBack: () -> Un
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
             LoadContent(state, onRetry = { viewModel.reload() }) { detail ->
-                TaskContent(detail, currentUserId, viewModel)
+                TaskContent(detail, currentUserId, viewModel, openTask)
             }
         }
     }
@@ -140,8 +158,11 @@ fun TaskScreen(viewModel: TaskViewModel, currentUserId: String, onBack: () -> Un
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: TaskViewModel) {
+private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: TaskViewModel, openTask: (String) -> Unit) {
     val task = detail.task
+    val keyOf = { t: Task -> taskKey(detail.project.name, t.number) }
+    val parent = detail.tasks.firstOrNull { it.id == task.parentId }
+    val subtasks = detail.tasks.filter { it.parentId == task.id }
     val readOnly = detail.project.archivedAt != null
     val nameOf = { id: String? -> detail.members.firstOrNull { it.id == id }?.name }
 
@@ -152,8 +173,13 @@ private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: Ta
         Text(task.title, style = MaterialTheme.typography.headlineSmall)
         Text(detail.project.name, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
+        parent?.let {
+            TextButton(onClick = { openTask(it.id) }) { Text("↳ Subtarefa de ${keyOf(it)} ${it.title}") }
+        }
+
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatusPill(task.status)
+            detail.types.firstOrNull { it.id == task.typeId }?.let { TypeChip(it) }
             Text("Prioridade ${task.priority.label.lowercase()}", style = MaterialTheme.typography.bodyMedium)
         }
 
@@ -165,15 +191,59 @@ private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: Ta
             }
         }
 
-        AssigneeField(detail.members, task.assignedToId, readOnly, onAssign = viewModel::assign)
+        PickerField(
+            "Responsável",
+            listOf(null to "Sem responsável") + detail.members.map { it.id to it.name },
+            task.assignedToId,
+            enabled = !readOnly,
+            onPick = viewModel::assign,
+        )
         if (!readOnly && task.assignedToId != currentUserId) {
             TextButton(onClick = { viewModel.assign(currentUserId) }) { Text("Atribuir a mim") }
         }
+
+        PickerField(
+            "Tipo",
+            listOf(null to "Sem tipo") + detail.types.map { it.id to it.name },
+            task.typeId,
+            enabled = !readOnly,
+            onPick = viewModel::changeType,
+        )
+
+        // Um nível só: quem tem subtarefas não vira subtarefa, e subtarefa não é pai.
+        PickerField(
+            "Tarefa-pai",
+            listOf(null to "Nenhuma") + detail.tasks.filter { it.id != task.id && it.parentId == null }.map { it.id to "${keyOf(it)} ${it.title}" },
+            task.parentId,
+            enabled = !readOnly && subtasks.isEmpty(),
+            onPick = viewModel::changeParent,
+            supporting = if (subtasks.isNotEmpty()) "Tem subtarefas, então não pode virar subtarefa." else null,
+        )
 
         task.dueDate?.let { Text("Data limite: ${it.take(10).split('-').reversed().joinToString("/")}") }
 
         Section("Descrição") {
             Text(task.description ?: "Sem descrição.", color = if (task.description == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+        }
+
+        if (task.parentId == null && subtasks.isNotEmpty()) {
+            Section("Subtarefas") {
+                val done = subtasks.count { it.status == TaskStatus.Done }
+                Text("$done de ${subtasks.size} concluídas", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LinearProgressIndicator(progress = { done.toFloat() / subtasks.size }, modifier = Modifier.fillMaxWidth())
+                subtasks.forEach { sub ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { openTask(sub.id) }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(keyOf(sub), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(sub.title, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        StatusPill(sub.status)
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                }
+            }
         }
 
         Section("Comentários") {
@@ -219,24 +289,32 @@ private fun withMentions(body: String, names: List<String>) = buildAnnotatedStri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AssigneeField(members: List<Member>, assigneeId: String?, readOnly: Boolean, onAssign: (String?) -> Unit) {
+// Campo de escolha (responsável, tipo, tarefa-pai). options: (id ou null, texto); a primeira é a opção "vazia".
+private fun PickerField(
+    label: String,
+    options: List<Pair<String?, String>>,
+    selected: String?,
+    enabled: Boolean,
+    onPick: (String?) -> Unit,
+    supporting: String? = null,
+) {
     var expanded by remember { mutableStateOf(false) }
-    val current = members.firstOrNull { it.id == assigneeId }?.name ?: "Sem responsável"
+    val current = options.firstOrNull { it.first == selected }?.second ?: options.first().second
 
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if (!readOnly) expanded = it }) {
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if (enabled) expanded = it }) {
         OutlinedTextField(
             value = current,
             onValueChange = {},
             readOnly = true,
-            enabled = !readOnly,
-            label = { Text("Responsável") },
+            enabled = enabled,
+            label = { Text(label) },
+            supportingText = supporting?.let { { Text(it) } },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text("Sem responsável") }, onClick = { expanded = false; onAssign(null) })
-            members.forEach { member ->
-                DropdownMenuItem(text = { Text(member.name) }, onClick = { expanded = false; onAssign(member.id) })
+            options.forEach { (id, text) ->
+                DropdownMenuItem(text = { Text(text) }, onClick = { expanded = false; if (id != selected) onPick(id) })
             }
         }
     }
