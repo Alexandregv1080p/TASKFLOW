@@ -9,6 +9,7 @@ import type {
   Project,
   ProjectInput,
   ProjectMember,
+  ProjectRole,
   ProjectScope,
   ProjectStatus,
   SearchResult,
@@ -114,7 +115,10 @@ export const api = {
   me: () => request<User>('/auth/me'),
 
   listMembers: (projectId: string) => request<ProjectMember[]>(`/projects/${projectId}/members`),
-  addMember: (projectId: string, email: string) => request<ProjectMember>(`/projects/${projectId}/members`, 'POST', { email }),
+  addMember: (projectId: string, email: string, role: ProjectRole) =>
+    request<ProjectMember>(`/projects/${projectId}/members`, 'POST', { email, role }),
+  changeMemberRole: (projectId: string, userId: string, role: ProjectRole) =>
+    request<ProjectMember>(`/projects/${projectId}/members/${userId}`, 'PATCH', { role }),
   removeMember: (projectId: string, userId: string) => request<void>(`/projects/${projectId}/members/${userId}`, 'DELETE'),
 
   getDashboard: () => request<Dashboard>('/dashboard'),

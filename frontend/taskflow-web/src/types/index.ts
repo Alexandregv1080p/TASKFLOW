@@ -15,9 +15,13 @@ export interface UserSummary {
   name: string
 }
 
-// Pessoa de um projeto: o dono ou um membro com quem ele foi compartilhado.
+// Papel no projeto: dono, membro (trabalha nas tarefas) ou visualizador (só lê).
+export type ProjectRole = 'Owner' | 'Member' | 'Viewer'
+
+// Pessoa de um projeto: o dono ou alguém com quem ele foi compartilhado.
 export interface ProjectMember extends UserSummary {
   isOwner: boolean
+  role: ProjectRole
 }
 
 export interface AuthResponse {

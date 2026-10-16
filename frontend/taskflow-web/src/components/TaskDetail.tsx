@@ -291,7 +291,7 @@ export function TaskDetail() {
                         onChange={(e) => save(() => api.assignTask(task.id, e.target.value || null))}
                       >
                         <option value="">Sem responsável</option>
-                        {users.map((u) => (
+                        {users.filter((u) => u.role !== 'Viewer').map((u) => (
                           <option key={u.id} value={u.id}>
                             {u.name}
                           </option>

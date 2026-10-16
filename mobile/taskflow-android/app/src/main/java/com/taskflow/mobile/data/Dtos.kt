@@ -71,7 +71,10 @@ data class Task(
 data class TaskType(val id: String, val name: String, val color: String)
 
 @Serializable
-data class Member(val id: String, val name: String, val isOwner: Boolean = false)
+data class Member(val id: String, val name: String, val isOwner: Boolean = false, val role: String = "Member") {
+    // Visualizador só lê: não altera tarefas nem pode ser responsável.
+    val isViewer get() = role == "Viewer"
+}
 
 @Serializable
 data class Comment(val id: String, val authorId: String? = null, val body: String, val createdAt: String)

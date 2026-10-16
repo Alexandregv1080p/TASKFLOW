@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Domain.Entities;
+using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Application.Common;
 
 // Regra única de acesso a projetos, usada por todos os services:
-//   - dono ou membro: lê o projeto e trabalha nas tarefas;
+//   - dono, membro ou visualizador: lê o projeto;
+//   - dono ou membro: trabalha nas tarefas (visualizador só lê);
 //   - só o dono: altera/exclui o projeto e gerencia membros.
 public static class ProjectAccess
 {
@@ -36,6 +38,13 @@ public static class ProjectAccess
 
         return db.Spaces.Where(s => s.OwnerId == userId || projects.Any(p => p.SpaceId == s.Id));
     }
+
+    // Pode alterar tarefas (e ser responsável por elas): dono ou membro, não visualizador.
+    public static Task<bool> CanEditProjectAsync(
+        this ITaskFlowDbContext db, Guid projectId, Guid userId, CancellationToken ct) =>
+        db.Projects.AnyAsync(p => p.Id == projectId
+            && (p.OwnerId == userId
+                || db.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId && m.Role == ProjectRole.Member)), ct);
 
     public static Task<bool> IsProjectPersonAsync(
         this ITaskFlowDbContext db, Guid projectId, Guid userId, CancellationToken ct) =>

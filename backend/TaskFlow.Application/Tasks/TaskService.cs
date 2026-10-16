@@ -15,6 +15,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
     {
         var project = await db.FindAccessibleProjectAsync(currentUser.UserId, projectId, ct);
         project.EnsureActive();
+        await EnsureCanEditAsync(projectId, ct);
 
         // ponytail: próximo número via MAX+1; duas criações simultâneas no mesmo projeto colidem no índice único
         // (ProjectId, Number) e uma delas falha. Trocar por sequência por projeto se houver concorrência real.
@@ -36,7 +37,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         Guid[] notified = [];
         if (request.AssignedToId is { } assigneeId)
         {
-            if (!await db.IsProjectPersonAsync(projectId, assigneeId, ct))
+            if (!await db.CanEditProjectAsync(projectId, assigneeId, ct))
                 throw new NotFoundException(nameof(User), assigneeId);
 
             task.AssignTo(assigneeId);
@@ -157,7 +158,7 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         else
         {
             // Só quem está no projeto (dono ou membro) pode ser responsável.
-            if (!await db.IsProjectPersonAsync(task.ProjectId, userId, ct))
+            if (!await db.CanEditProjectAsync(task.ProjectId, userId, ct))
                 throw new NotFoundException(nameof(User), userId);
 
             task.AssignTo(userId);
@@ -371,6 +372,15 @@ public class TaskService(ITaskFlowDbContext db, ICurrentUser currentUser, ILogge
         if (await db.Projects.AnyAsync(p => p.Id == task.ProjectId && p.ArchivedAt != null, ct))
             throw new DomainException("This project is archived. Restore it to make changes.");
 
+        await EnsureCanEditAsync(task.ProjectId, ct);
+
         return task;
+    }
+
+    // Visualizador vê tudo, mas não altera: 403 (ele já sabe que o projeto existe).
+    private async Task EnsureCanEditAsync(Guid projectId, CancellationToken ct)
+    {
+        if (!await db.CanEditProjectAsync(projectId, currentUser.UserId, ct))
+            throw new ForbiddenException("Viewers can only read this project.");
     }
 }

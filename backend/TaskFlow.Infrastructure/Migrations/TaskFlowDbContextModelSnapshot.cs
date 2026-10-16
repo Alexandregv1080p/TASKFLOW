@@ -162,6 +162,13 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime>("AddedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Member");
+
                     b.HasKey("ProjectId", "UserId");
 
                     b.HasIndex("UserId");

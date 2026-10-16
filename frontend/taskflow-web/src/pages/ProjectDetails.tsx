@@ -2,6 +2,7 @@ import {
   ArchiveIcon,
   ArrowCounterClockwiseIcon,
   ArrowLeftIcon,
+  EyeIcon,
   PencilSimpleIcon,
   TrashIcon,
   TagIcon,
@@ -20,14 +21,15 @@ import { TaskTypesDialog } from '../components/TaskTypesDialog'
 import { useAsync } from '../hooks/useAsync'
 import { useLive } from '../hooks/useLive'
 import { api } from '../services/api'
-import type { Project, ProjectInput, ProjectStatus, Task, TaskInput, TaskStatus, TaskType, UserSummary } from '../types'
+import type { Project, ProjectInput, ProjectMember, ProjectStatus, Task, TaskInput, TaskStatus, TaskType } from '../types'
 import { PROJECT_STATUSES, PROJECT_STATUS_LABEL, projectKey } from '../utils/format'
 
 // Compartilhado com o modal de detalhe da tarefa (rota filha).
 export interface ProjectOutletContext {
   project: Project
   tasks: Task[]
-  users: UserSummary[]
+  // Pessoas do projeto; quem pode ser responsável são as que não são visualizadoras.
+  users: ProjectMember[]
   keyPrefix: string
   // Projeto arquivado: nada pode ser alterado.
   readOnly: boolean
@@ -68,7 +70,8 @@ export function ProjectDetails() {
   const { data: types, reload: reloadTypes } = useAsync(() => api.listTaskTypes(id), [id])
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string>()
-  const usersById = useMemo(() => new Map((data?.[2] ?? []).map((u) => [u.id, u])), [data])
+  // Só quem pode trabalhar nas tarefas (dono e membros) aparece como responsável possível.
+  const usersById = useMemo(() => new Map((data?.[2] ?? []).filter((u) => u.role !== 'Viewer').map((u) => [u.id, u])), [data])
 
   if (loading && !data) return <Loading layout="board" />
   if (error) return <ErrorMessage message={error} onRetry={reload} />
@@ -78,6 +81,9 @@ export function ProjectDetails() {
   // Só o dono edita/exclui o projeto e gerencia pessoas; a API aplica a mesma regra (403).
   const isOwner = project.ownerId === user?.id
   const archived = project.archivedAt !== null
+  // Visualizador vê tudo e não altera nada; a API aplica a mesma regra (403).
+  const viewer = users.find((u) => u.id === user?.id)?.role === 'Viewer'
+  const readOnly = archived || viewer
   const keyPrefix = projectKey(project.name)
   const done = tasks.filter((t) => t.status === 'Done').length
 
@@ -145,7 +151,7 @@ export function ProjectDetails() {
     tasks,
     users,
     keyPrefix,
-    readOnly: archived,
+    readOnly,
     types: types ?? [],
     replaceTask,
     removeTask,
@@ -248,6 +254,13 @@ export function ProjectDetails() {
         </header>
       )}
 
+      {viewer && !archived && (
+        <div className="notice" role="status">
+          <EyeIcon size={18} aria-hidden="true" />
+          <span className="notice__text">Você é visualizador deste projeto: pode acompanhar tudo, mas não alterar.</span>
+        </div>
+      )}
+
       {archived && (
         <div className="notice" role="status">
           <ArchiveIcon size={18} aria-hidden="true" />
@@ -285,7 +298,7 @@ export function ProjectDetails() {
         types={types ?? []}
         currentUserId={user?.id}
         busyTaskId={busyTaskId}
-        readOnly={archived}
+        readOnly={readOnly}
         onCreate={createTask}
         onMove={moveTask}
         onDelete={deleteTask}

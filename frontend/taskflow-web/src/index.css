@@ -1585,6 +1585,10 @@ textarea {
 
 /* Diálogo de tipos de tarefa */
 
+.member-form {
+  flex-wrap: wrap;
+}
+
 .type-list {
   display: flex;
   flex-direction: column;

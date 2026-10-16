@@ -20,6 +20,10 @@ public class ProjectMembersController(ProjectMemberService members) : Controller
         return CreatedAtAction(nameof(List), new { projectId }, member);
     }
 
+    [HttpPatch("{userId:guid}")]
+    public Task<ProjectMemberResponse> ChangeRole(Guid projectId, Guid userId, ChangeMemberRoleRequest request, CancellationToken ct) =>
+        members.ChangeRoleAsync(projectId, userId, request, ct);
+
     [HttpDelete("{userId:guid}")]
     public async Task<IActionResult> Remove(Guid projectId, Guid userId, CancellationToken ct)
     {

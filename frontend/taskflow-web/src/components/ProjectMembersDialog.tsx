@@ -1,7 +1,7 @@
 import { SignOutIcon, TrashIcon, XIcon } from '@phosphor-icons/react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError } from '../services/api'
-import type { Project, ProjectMember } from '../types'
+import type { Project, ProjectMember, ProjectRole } from '../types'
 import { Avatar } from './Avatar'
 
 interface Props {
@@ -15,9 +15,12 @@ interface Props {
   onLeft: () => void
 }
 
+const ROLE_LABEL: Record<ProjectRole, string> = { Owner: 'Dono', Member: 'Membro', Viewer: 'Visualizador' }
+
 export function ProjectMembersDialog({ project, members, currentUserId, onClose, onChanged, onLeft }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [email, setEmail] = useState('')
+  const [role, setRole] = useState<ProjectRole>('Member')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string>()
   const isOwner = project.ownerId === currentUserId
@@ -32,7 +35,7 @@ export function ProjectMembersDialog({ project, members, currentUserId, onClose,
     setSaving(true)
     setError(undefined)
     try {
-      await api.addMember(project.id, email)
+      await api.addMember(project.id, email, role)
       setEmail('')
       onChanged()
     } catch (err) {
@@ -42,6 +45,18 @@ export function ProjectMembersDialog({ project, members, currentUserId, onClose,
       else setError(err instanceof Error ? err.message : 'Erro ao adicionar.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function changeRole(member: ProjectMember, next: ProjectRole) {
+    if (next === 'Viewer' && !window.confirm(`${member.name} vai virar visualizador: só acompanha, e as tarefas dele ficam sem responsável.`)) return
+
+    setError(undefined)
+    try {
+      await api.changeMemberRole(project.id, member.id, next)
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao trocar o papel.')
     }
   }
 
@@ -96,6 +111,13 @@ export function ProjectMembersDialog({ project, members, currentUserId, onClose,
               />
               <span className="field__hint">A pessoa precisa já ter uma conta no TaskFlow.</span>
             </label>
+            <label className="field">
+              <span className="field__label">Papel</span>
+              <select value={role} onChange={(e) => setRole(e.target.value as ProjectRole)}>
+                <option value="Member">Membro</option>
+                <option value="Viewer">Visualizador</option>
+              </select>
+            </label>
             <button className="btn btn--primary" disabled={saving}>
               {saving ? 'Adicionando…' : 'Adicionar'}
             </button>
@@ -116,7 +138,19 @@ export function ProjectMembersDialog({ project, members, currentUserId, onClose,
                 {member.name}
                 {member.id === currentUserId && <span className="member-list__you"> (você)</span>}
               </span>
-              <span className="member-list__role">{member.isOwner ? 'Dono' : 'Membro'}</span>
+              {isOwner && !member.isOwner ? (
+                <select
+                  className="inline-select member-list__role"
+                  aria-label={`Papel de ${member.name}`}
+                  value={member.role}
+                  onChange={(e) => changeRole(member, e.target.value as ProjectRole)}
+                >
+                  <option value="Member">Membro</option>
+                  <option value="Viewer">Visualizador</option>
+                </select>
+              ) : (
+                <span className="member-list__role">{ROLE_LABEL[member.role]}</span>
+              )}
 
               {!member.isOwner && isOwner && (
                 <button

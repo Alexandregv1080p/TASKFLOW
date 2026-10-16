@@ -139,7 +139,7 @@ fun BoardScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             LoadContent(state, onRetry = { viewModel.reload() }) { board ->
-                val readOnly = board.project.archivedAt != null
+                val readOnly = board.project.archivedAt != null || board.members.any { it.id == currentUserId && it.isViewer }
                 val status = TaskStatus.entries[tab]
                 val column = board.tasks.filter { it.status == status }
 

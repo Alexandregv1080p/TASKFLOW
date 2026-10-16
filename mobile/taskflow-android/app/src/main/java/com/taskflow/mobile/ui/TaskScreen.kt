@@ -168,7 +168,7 @@ private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: Ta
     val keyOf = { t: Task -> taskKey(detail.project.name, t.number) }
     val parent = detail.tasks.firstOrNull { it.id == task.parentId }
     val subtasks = detail.tasks.filter { it.parentId == task.id }
-    val readOnly = detail.project.archivedAt != null
+    val readOnly = detail.project.archivedAt != null || detail.members.any { it.id == currentUserId && it.isViewer }
     val nameOf = { id: String? -> detail.members.firstOrNull { it.id == id }?.name }
 
     Column(
@@ -198,7 +198,7 @@ private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: Ta
 
         PickerField(
             "Responsável",
-            listOf(null to "Sem responsável") + detail.members.map { it.id to it.name },
+            listOf(null to "Sem responsável") + detail.members.filter { !it.isViewer }.map { it.id to it.name },
             task.assignedToId,
             enabled = !readOnly,
             onPick = viewModel::assign,
