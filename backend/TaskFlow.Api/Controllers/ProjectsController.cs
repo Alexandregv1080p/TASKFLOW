@@ -5,7 +5,7 @@ namespace TaskFlow.Api.Controllers;
 
 [ApiController]
 [Route("api/projects")]
-public class ProjectsController(ProjectService projects) : ControllerBase
+public class ProjectsController(ProjectService projects, ProjectExportService export) : ControllerBase
 {
     // Diretório de projetos. scope: All (padrão), Mine ou Archived; search: trecho do nome; spaceId: só de um espaço.
     [HttpGet]
@@ -15,6 +15,15 @@ public class ProjectsController(ProjectService projects) : ControllerBase
         [FromQuery] Guid? spaceId = null,
         CancellationToken ct = default) =>
         projects.ListAsync(scope, search, spaceId: spaceId, ct: ct);
+
+    // Tarefas do projeto em CSV (planilha). Quem está no projeto exporta, inclusive o visualizador.
+    [HttpGet("{id:guid}/export")]
+    public async Task<IActionResult> Export(Guid id, CancellationToken ct)
+    {
+        var file = await export.TasksCsvAsync(id, ct);
+
+        return File(file.Content, "text/csv; charset=utf-8", file.FileName);
+    }
 
     [HttpGet("{id:guid}")]
     public Task<ProjectResponse> Get(Guid id, CancellationToken ct) => projects.GetAsync(id, ct);

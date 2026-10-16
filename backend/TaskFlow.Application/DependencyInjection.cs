@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<AuthService>();
         services.AddScoped<ProjectService>();
         services.AddScoped<ProjectMemberService>();
+        services.AddScoped<ProjectExportService>();
         services.AddScoped<SpaceService>();
         services.AddScoped<TaskService>();
         services.AddScoped<TaskTypeService>();

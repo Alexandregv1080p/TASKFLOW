@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { apiPost, column, registerUser, signIn } from './helpers'
 
@@ -22,4 +23,14 @@ test('visualizador acompanha o projeto sem conseguir alterar', async ({ page, re
   await expect(detail.getByLabel('Novo comentário')).toHaveCount(0)
   await expect(detail.getByLabel('Responsável')).toBeDisabled()
   await expect(detail.getByRole('button', { name: 'Excluir tarefa' })).toHaveCount(0)
+  await detail.getByRole('button', { name: 'Fechar' }).click()
+
+  // Exportar é leitura: o visualizador baixa a planilha das tarefas.
+  const downloading = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Exportar CSV' }).click()
+  const file = await downloading
+  expect(file.suggestedFilename()).toMatch(/^taskflow-por-\d{4}-\d{2}-\d{2}\.csv$/)
+  const csv = readFileSync(await file.path(), 'utf-8')
+  expect(csv).toContain('Chave;Título;Tipo')
+  expect(csv).toContain('POR-1;Nova home;;A fazer;Alta;;Dona Projeto')
 })

@@ -2,6 +2,7 @@ import {
   ArchiveIcon,
   ArrowCounterClockwiseIcon,
   ArrowLeftIcon,
+  DownloadSimpleIcon,
   EyeIcon,
   PencilSimpleIcon,
   TrashIcon,
@@ -205,6 +206,11 @@ export function ProjectDetails() {
           </div>
 
           <div className="page-header__actions">
+            {/* Exportar é leitura: vale para qualquer pessoa do projeto, inclusive visualizador e projeto arquivado. */}
+            <button className="btn btn--ghost" onClick={() => run(() => api.exportProjectCsv(id))} title="Baixar as tarefas em planilha (CSV)">
+              <DownloadSimpleIcon size={16} aria-hidden="true" />
+              Exportar CSV
+            </button>
             <button
               className="avatar-stack"
               onClick={() => setMembersOpen(true)}

@@ -108,6 +108,28 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
   return response.status === 204 ? (undefined as T) : response.json()
 }
 
+// Baixa um arquivo da API (com o token, que um link comum não enviaria) e entrega ao navegador para salvar.
+async function download(path: string): Promise<void> {
+  const token = session.token
+  const response = await fetch(`${BASE_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!response.ok) {
+    const error = await response.json().catch(() => null)
+    throw new ApiError(response.status, error?.message ?? `Erro ${response.status}`)
+  }
+
+  // Nome sugerido pela API (Content-Disposition), com acentos via filename*.
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1]
+  const plain = /filename="?([^";]+)"?/i.exec(disposition)?.[1]
+
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = encoded ? decodeURIComponent(encoded) : (plain ?? 'download')
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export const api = {
   register: (name: string, email: string, password: string) =>
     request<AuthResponse>('/auth/register', 'POST', { name, email, password }),
@@ -153,6 +175,7 @@ export const api = {
   archiveProject: (id: string) => request<Project>(`/projects/${id}/archive`, 'POST'),
   restoreProject: (id: string) => request<Project>(`/projects/${id}/restore`, 'POST'),
   deleteProject: (id: string) => request<void>(`/projects/${id}`, 'DELETE'),
+  exportProjectCsv: (id: string) => download(`/projects/${id}/export`),
 
   setTaskStar: (id: string, starred: boolean) => request<Task>(`/tasks/${id}/star`, starred ? 'PUT' : 'DELETE'),
   markTaskViewed: (id: string) => request<void>(`/tasks/${id}/view`, 'POST'),
