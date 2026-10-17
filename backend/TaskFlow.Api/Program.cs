@@ -13,6 +13,7 @@ using TaskFlow.Application;
 using TaskFlow.Application.Common;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Infrastructure;
+using TaskFlow.Infrastructure.Antivirus;
 using TaskFlow.Infrastructure.Persistence;
 using TaskFlow.Infrastructure.Security;
 using TaskFlow.Infrastructure.Storage;
@@ -41,8 +42,9 @@ builder.Services.AddApplication();
 builder.Services.AddSingleton(builder.Configuration.GetSection("Attachments").Get<AttachmentOptions>() ?? new AttachmentOptions());
 // Anexos: Storage:Provider = Local (pasta; no Docker, o volume /app/data) ou S3 (bucket; MinIO no compose).
 var storage = builder.Configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
+var antivirus = builder.Configuration.GetSection("Antivirus").Get<AntivirusOptions>() ?? new AntivirusOptions();
 builder.Services.AddInfrastructure(
-    connectionString, jwt, storage, Path.Combine(builder.Environment.ContentRootPath, "data", "attachments"));
+    connectionString, jwt, storage, Path.Combine(builder.Environment.ContentRootPath, "data", "attachments"), antivirus);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -127,6 +129,9 @@ Metrics.SuppressDefaultMetrics(new SuppressDefaultMetricOptions { SuppressMeters
 MeterAdapter.StartListening();
 
 var app = builder.Build();
+
+if (string.IsNullOrWhiteSpace(antivirus.Host))
+    app.Logger.LogWarning("Antivirus disabled: attachments are not scanned. Set Antivirus__Host to a ClamAV daemon to enable it.");
 
 // Em Development sempre; em outros ambientes só se ligado por configuração (ex.: Docker Compose).
 // ponytail: migrar na inicialização serve para uma instância; com várias réplicas, aplicar as migrations

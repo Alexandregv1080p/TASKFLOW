@@ -33,7 +33,8 @@ export function TaskActivity({ taskId, version, users, types, taskLabel, current
 
   async function addComment(body: string) {
     const comment = await api.addComment(taskId, body)
-    setData(([events, comments]) => [events, [comment, ...comments]])
+    // A recarga em tempo real pode já ter trazido o comentário antes desta resposta: sem duplicar.
+    setData(([events, comments]) => [events, [comment, ...comments.filter((c) => c.id !== comment.id)]])
   }
 
   async function deleteComment(comment: TaskComment) {

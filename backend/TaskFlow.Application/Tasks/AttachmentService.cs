@@ -31,6 +31,7 @@ public class AttachmentService(
     ITaskFlowDbContext db,
     ICurrentUser currentUser,
     IFileStorage files,
+    IVirusScanner scanner,
     ILogger<AttachmentService> logger,
     AttachmentOptions options,
     ILiveNotifier? live = null)
@@ -71,7 +72,20 @@ public class AttachmentService(
                 $"This project's attachment space is full: {Megabytes(used)} of {Megabytes(options.ProjectQuotaBytes)} used. " +
                 "Delete old attachments to free space.");
 
-        await files.SaveAsync(attachment.StorageKey, content, ct);
+        // Antivírus antes de gravar. O arquivo (até 10 MB) fica em memória para ser lido duas vezes: verificar e gravar.
+        using var buffered = new MemoryStream((int)attachment.SizeBytes);
+        await content.CopyToAsync(buffered, ct);
+        buffered.Position = 0;
+
+        var scan = await scanner.ScanAsync(buffered, ct);
+        if (!scan.Clean)
+        {
+            logger.LogWarning("AttachmentBlocked {TaskId} {FileName} {Threat} {UserId}", task.Id, attachment.FileName, scan.Threat, currentUser.UserId);
+            throw new DomainException($"The file was blocked by the antivirus: {scan.Threat}.");
+        }
+
+        buffered.Position = 0;
+        await files.SaveAsync(attachment.StorageKey, buffered, ct);
 
         try
         {
