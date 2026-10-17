@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,10 @@ import com.taskflow.mobile.data.Member
 import com.taskflow.mobile.data.StorageUsage
 import com.taskflow.mobile.domain.ATTACHMENT_MIME_TYPES
 import com.taskflow.mobile.domain.MAX_ATTACHMENT_BYTES
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.taskflow.mobile.domain.formatDateTime
 import com.taskflow.mobile.domain.formatSize
 import java.io.File
@@ -58,10 +63,11 @@ fun AttachmentsSection(
     onError: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var deleting by remember { mutableStateOf<Attachment?>(null) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) readPicked(context, uri, onUpload, onError)
+        if (uri != null) scope.launch { readPicked(context, uri, onUpload, onError) }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -125,8 +131,9 @@ fun AttachmentsSection(
     }
 }
 
-// Lê o arquivo escolhido: nome pelo provedor de documentos, tamanho conferido antes de carregar na memória.
-private fun readPicked(
+// Lê o arquivo escolhido (fora da thread principal): nome pelo provedor de documentos, tamanho conferido
+// antes de carregar na memória.
+private suspend fun readPicked(
     context: Context,
     uri: Uri,
     onUpload: (String, String?, ByteArray) -> Unit,
@@ -134,25 +141,30 @@ private fun readPicked(
 ) {
     val resolver = context.contentResolver
     var name = "arquivo"
-    var size = -1L
-    resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { cursor ->
-        if (cursor.moveToFirst()) {
-            name = cursor.getString(0) ?: name
-            if (!cursor.isNull(1)) size = cursor.getLong(1)
+    var tooBig = false
+    val bytes = withContext(Dispatchers.IO) {
+        try {
+            var size = -1L
+            resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    name = cursor.getString(0) ?: name
+                    if (!cursor.isNull(1)) size = cursor.getLong(1)
+                }
+            }
+            tooBig = size > MAX_ATTACHMENT_BYTES
+            if (tooBig) null else resolver.openInputStream(uri)?.use { it.readBytes() }
+        } catch (e: Exception) {
+            // Provedor sumiu, permissão revogada, erro de leitura.
+            if (e is CancellationException) throw e
+            null
         }
     }
 
-    if (size > MAX_ATTACHMENT_BYTES) {
-        onError("\"$name\" passa de 10 MB.")
-        return
+    when {
+        tooBig -> onError("\"$name\" passa de 10 MB.")
+        bytes == null -> onError("Não foi possível ler o arquivo.")
+        else -> onUpload(name, resolver.getType(uri), bytes)
     }
-
-    val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
-    if (bytes == null) {
-        onError("Não foi possível ler o arquivo.")
-        return
-    }
-    onUpload(name, resolver.getType(uri), bytes)
 }
 
 // Abre o arquivo baixado no app do celular que lê aquele tipo (o arquivo sai do cache do app via FileProvider).

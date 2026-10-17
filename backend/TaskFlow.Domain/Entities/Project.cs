@@ -24,6 +24,10 @@ public class Project : Entity
     // Espaço a que o projeto pertence. Nulo = projeto avulso, sem espaço.
     public Guid? SpaceId { get; private set; }
 
+    // Bytes de anexos do projeto, para a cota. Mudado só por atualização condicional no banco (AttachmentQuota),
+    // nunca pela entidade: assim a conta é atômica entre envios simultâneos.
+    public long AttachmentBytes { get; private set; }
+
     public Project(string name, string? description, Guid ownerId, Guid? spaceId = null)
     {
         SpaceId = spaceId;

@@ -53,6 +53,7 @@ import com.taskflow.mobile.data.Attachment
 import com.taskflow.mobile.data.Comment
 import com.taskflow.mobile.data.StorageUsage
 import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -146,6 +147,8 @@ class TaskViewModel(
                 onReady(file)
             } catch (e: ApiException) {
                 message.value = e.message
+            } catch (e: IOException) {
+                message.value = "Não foi possível salvar o anexo no celular."
             }
         }
     }

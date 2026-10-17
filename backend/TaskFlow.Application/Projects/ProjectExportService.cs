@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -71,8 +72,9 @@ public class ProjectExportService(ITaskFlowDbContext db, ICurrentUser currentUse
                 t.Assignee,
                 t.Creator,
                 t.ParentNumber is { } parent ? ProjectKey.TaskKey(project.Name, parent) : null,
-                t.DueDate?.ToString("yyyy-MM-dd"),
-                t.CreatedAt.ToString("yyyy-MM-dd HH:mm"),
+                // Cultura invariante: ":" num formato próprio vira o separador de hora da cultura do servidor.
+                t.DueDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                t.CreatedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
                 t.Description,
             ]);
         }

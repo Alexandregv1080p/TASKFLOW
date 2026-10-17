@@ -34,6 +34,18 @@ public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : Db
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    public async Task<bool> ReserveAttachmentBytesAsync(Guid projectId, long bytes, long quota, CancellationToken ct) =>
+        await Projects
+            .Where(p => p.Id == projectId && p.AttachmentBytes + bytes <= quota)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.AttachmentBytes, p => p.AttachmentBytes + bytes), ct) == 1;
+
+    public Task ReleaseAttachmentBytesAsync(Guid projectId, long bytes) =>
+        bytes <= 0
+            ? Task.CompletedTask
+            : Projects
+                .Where(p => p.Id == projectId)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.AttachmentBytes, p => p.AttachmentBytes > bytes ? p.AttachmentBytes - bytes : 0));
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(TaskFlowDbContext).Assembly);
 }

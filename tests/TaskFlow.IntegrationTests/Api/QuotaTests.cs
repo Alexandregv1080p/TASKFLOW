@@ -56,4 +56,33 @@ public class QuotaTests(DatabaseFixture db)
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/attachments/{kept.GetProperty("id").GetString()}")).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await UploadAsync(client, second.GetProperty("id").GetString()!, "b.pdf", 600 * KB)).StatusCode);
     }
+
+    [Fact]
+    public async Task Envios_simultaneos_nao_passam_juntos_da_cota_e_excluir_a_tarefa_devolve_o_espaco()
+    {
+        await using var api = db.Api.WithWebHostBuilder(b => b.UseSetting("Attachments:ProjectQuotaMb", "1"));
+        var client = api.CreateClient();
+        var auth = await (await client.PostAsJsonAsync("/api/auth/register",
+                new { name = "Dona Cota 2", email = $"{Guid.NewGuid():N}@example.com", password = "senha-segura-123" }))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.GetProperty("accessToken").GetString());
+        var project = await (await client.PostAsJsonAsync("/api/projects", new { name = "Cota 2" })).Content.ReadFromJsonAsync<JsonElement>();
+        var projectId = project.GetProperty("id").GetString();
+        var task = await (await client.PostAsJsonAsync($"/api/projects/{projectId}/tasks", new { title = "A", priority = "Low" }))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var taskId = task.GetProperty("id").GetString()!;
+
+        // Seis envios de 300 KB ao mesmo tempo numa cota de 1 MB: cabem três, nem um a mais.
+        var responses = await Task.WhenAll(Enumerable.Range(1, 6).Select(i => UploadAsync(client, taskId, $"f{i}.pdf", 300 * KB)));
+        Assert.Equal(3, responses.Count(r => r.StatusCode == HttpStatusCode.Created));
+        Assert.Equal(3, responses.Count(r => r.StatusCode == HttpStatusCode.BadRequest));
+
+        var usage = await client.GetFromJsonAsync<JsonElement>($"/api/projects/{projectId}/storage");
+        Assert.Equal(900 * KB, usage.GetProperty("usedBytes").GetInt64());
+
+        // Excluir a tarefa devolve o espaço dos anexos dela.
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/tasks/{taskId}")).StatusCode);
+        usage = await client.GetFromJsonAsync<JsonElement>($"/api/projects/{projectId}/storage");
+        Assert.Equal(0, usage.GetProperty("usedBytes").GetInt64());
+    }
 }

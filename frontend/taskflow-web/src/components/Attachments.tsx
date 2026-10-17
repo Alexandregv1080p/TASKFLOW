@@ -18,6 +18,8 @@ interface Props {
   currentUserId: string | undefined
   isProjectOwner: boolean
   readOnly: boolean
+  // Anexou ou excluiu: o modal sobe a versão, o que recarrega esta lista, a cota e o histórico.
+  onChange: () => void
 }
 
 function formatSize(bytes: number): string {
@@ -27,8 +29,8 @@ function formatSize(bytes: number): string {
 }
 
 // Anexos da tarefa: prints de bug, documentos, logs. Também dá para soltar o arquivo em cima da seção.
-export function Attachments({ projectId, taskId, version, users, currentUserId, isProjectOwner, readOnly }: Props) {
-  const { data, error, reload, setData } = useAsync(() => api.listAttachments(taskId), [taskId, version])
+export function Attachments({ projectId, taskId, version, users, currentUserId, isProjectOwner, readOnly, onChange }: Props) {
+  const { data, error, reload } = useAsync(() => api.listAttachments(taskId), [taskId, version])
   // Espaço do projeto (cota somando os anexos de todas as tarefas); recarrega junto com a lista.
   const { data: storage, reload: reloadStorage } = useAsync(() => api.projectStorage(projectId), [projectId, version, data?.length])
   const [uploading, setUploading] = useState(false)
@@ -47,9 +49,8 @@ export function Attachments({ projectId, taskId, version, users, currentUserId, 
       }
       setUploading(true)
       try {
-        const attachment = await api.uploadAttachment(taskId, file)
-        // A recarga em tempo real pode ter trazido o anexo antes desta resposta: sem duplicar.
-        setData((current) => [attachment, ...current.filter((x) => x.id !== attachment.id)])
+        await api.uploadAttachment(taskId, file)
+        onChange()
       } catch (err) {
         setActionError(err instanceof Error ? err.message : 'Erro ao anexar.')
       } finally {
@@ -64,7 +65,7 @@ export function Attachments({ projectId, taskId, version, users, currentUserId, 
     setActionError(undefined)
     try {
       await api.deleteAttachment(attachment.id)
-      setData((current) => current.filter((a) => a.id !== attachment.id))
+      onChange()
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Erro ao excluir.')
     }
@@ -109,7 +110,7 @@ export function Attachments({ projectId, taskId, version, users, currentUserId, 
             const canDelete = !readOnly && (a.uploadedById === currentUserId || isProjectOwner)
             return (
               <li key={a.id} className="attachments__item">
-                {a.contentType.startsWith('image/') ? <AuthImage id={a.id} /> : <FileIcon size={28} className="attachments__icon" aria-hidden="true" />}
+                {a.contentType.startsWith('image/') && a.sizeBytes <= THUMB_MAX_BYTES ? <AuthImage id={a.id} /> : <FileIcon size={28} className="attachments__icon" aria-hidden="true" />}
                 <div className="attachments__text">
                   <button className="link-btn attachments__name" onClick={() => download(a)} title="Baixar">
                     {a.fileName}
@@ -175,6 +176,10 @@ export function Attachments({ projectId, taskId, version, users, currentUserId, 
 }
 
 // Miniatura de imagem anexada: o arquivo só sai da API com o token, então vem como blob e vira URL local.
+// Baixa o arquivo inteiro, por isso só para imagens pequenas; as maiores ficam com o ícone.
+// ponytail: sem miniatura gerada no servidor; gerar no upload se imagens grandes forem comuns.
+const THUMB_MAX_BYTES = 1024 * 1024
+
 function AuthImage({ id }: { id: string }) {
   const [url, setUrl] = useState<string>()
 

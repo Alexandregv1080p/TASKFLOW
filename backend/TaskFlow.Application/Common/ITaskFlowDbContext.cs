@@ -36,4 +36,11 @@ public interface ITaskFlowDbContext
     DbSet<Notification> Notifications { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    // Espaço de anexos do projeto (Project.AttachmentBytes), mudado por UPDATE condicional no banco: "soma só se couber"
+    // é atômico, então dois envios ao mesmo tempo não passam juntos da cota. true = reservou; false = não cabe.
+    Task<bool> ReserveAttachmentBytesAsync(Guid projectId, long bytes, long quota, CancellationToken ct);
+
+    // Devolve espaço (anexo excluído, envio que falhou depois de reservar). Nunca fica negativo.
+    Task ReleaseAttachmentBytesAsync(Guid projectId, long bytes);
 }

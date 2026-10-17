@@ -116,6 +116,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime?>("ArchivedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("AttachmentBytes")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 

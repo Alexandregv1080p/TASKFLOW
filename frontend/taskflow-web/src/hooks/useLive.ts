@@ -1,6 +1,6 @@
 import { HubConnectionBuilder, HubConnectionState, LogLevel, type HubConnection } from '@microsoft/signalr'
 import { useEffect, useRef, useState } from 'react'
-import { session } from '../services/api'
+import { liveConnection, session } from '../services/api'
 
 const HUB_URL = `${import.meta.env.VITE_API_URL ?? ''}/hubs/board`
 
@@ -26,13 +26,23 @@ function acquire(): Shared {
     const status: Shared['status'] = new Set()
     const emit = (connected: boolean) => status.forEach((listener) => listener(connected))
 
+    const setId = () => {
+      liveConnection.id = connection.connectionId
+    }
+
     connection.onreconnecting(() => emit(false))
-    connection.onclose(() => emit(false))
-    connection.onreconnected(() => emit(true))
+    connection.onclose(() => {
+      liveConnection.id = null
+      emit(false)
+    })
+    connection.onreconnected(() => {
+      setId()
+      emit(true)
+    })
 
     // ponytail: se a primeira conexão falhar não há nova tentativa até recarregar a página
     // (a reconexão automática só cobre quedas depois de conectar). Sem tempo real, tudo segue funcionando.
-    shared = { connection, status, refs: 0, started: connection.start() }
+    shared = { connection, status, refs: 0, started: connection.start().then(setId) }
   }
 
   shared.refs++
@@ -42,6 +52,7 @@ function acquire(): Shared {
 function release(current: Shared) {
   if (--current.refs > 0) return
 
+  liveConnection.id = null
   current.connection.stop()
   if (shared === current) shared = undefined
 }
@@ -49,8 +60,7 @@ function release(current: Shared) {
 // Chama onEvent a cada aviso do servidor e também quando a conexão volta, porque avisos podem ter se perdido.
 // O aviso não traz dados: quem recebe recarrega pela API. Com projectId, entra no grupo do projeto enquanto
 // o componente estiver montado. Devolve se o tempo real está ativo.
-// ponytail: quem fez a alteração também recebe o aviso e recarrega (uma leitura a mais); para evitar,
-// enviar o id da conexão nas requisições e excluí-la do envio no servidor.
+// Quem fez a alteração não recebe o aviso dela (o id da conexão vai nas requisições: liveConnection).
 export function useLive(event: 'BoardChanged' | 'Notified', onEvent: () => void, projectId?: string) {
   const [live, setLive] = useState(false)
   const handler = useRef(onEvent)

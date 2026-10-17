@@ -65,6 +65,11 @@ public class AntivirusTests(DatabaseFixture db)
         // O bloqueado não ficou nem no banco nem no disco: só o limpo aparece.
         var list = await client.GetFromJsonAsync<JsonElement>($"/api/tasks/{taskId}/attachments");
         Assert.Equal(["limpo.txt"], list.EnumerateArray().Select(a => a.GetProperty("fileName").GetString()));
+
+        // E não consumiu cota: o espaço reservado para ele voltou.
+        var projectId = (await client.GetFromJsonAsync<JsonElement>($"/api/tasks/{taskId}")).GetProperty("projectId").GetString();
+        var usage = await client.GetFromJsonAsync<JsonElement>($"/api/projects/{projectId}/storage");
+        Assert.Equal(Encoding.ASCII.GetByteCount("relatório"), usage.GetProperty("usedBytes").GetInt64());
     }
 
     [Fact]

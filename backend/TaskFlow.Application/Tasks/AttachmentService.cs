@@ -41,7 +41,7 @@ public class AttachmentService(
     {
         var project = await db.FindAccessibleProjectAsync(currentUser.UserId, projectId, ct);
 
-        return new StorageUsageResponse(await UsedBytesAsync(project.Id, ct), options.ProjectQuotaBytes);
+        return new StorageUsageResponse(project.AttachmentBytes, options.ProjectQuotaBytes);
     }
 
     public async Task<IReadOnlyList<AttachmentResponse>> ListAsync(Guid taskId, CancellationToken ct = default)
@@ -64,39 +64,44 @@ public class AttachmentService(
         // Valida nome, tipo e tamanho antes de gravar qualquer coisa no disco.
         var attachment = new TaskAttachment(task.ProjectId, task.Id, currentUser.UserId, fileName, size);
 
-        // ponytail: dois envios ao mesmo tempo no mesmo projeto podem passar juntos e estourar a cota por um arquivo;
-        // para garantir à risca, um lock por projeto (pg_advisory_xact_lock) em volta da conta e da gravação.
-        var used = await UsedBytesAsync(task.ProjectId, ct);
-        if (used + attachment.SizeBytes > options.ProjectQuotaBytes)
+        // Reserva o espaço antes de tudo, numa atualização atômica: dois envios simultâneos não estouram a cota juntos.
+        if (!await db.ReserveAttachmentBytesAsync(task.ProjectId, attachment.SizeBytes, options.ProjectQuotaBytes, ct))
+        {
+            var used = await db.Projects.Where(p => p.Id == task.ProjectId).Select(p => p.AttachmentBytes).SingleAsync(ct);
             throw new DomainException(
                 $"This project's attachment space is full: {Megabytes(used)} of {Megabytes(options.ProjectQuotaBytes)} used. " +
                 "Delete old attachments to free space.");
-
-        // Antivírus antes de gravar. O arquivo (até 10 MB) fica em memória para ser lido duas vezes: verificar e gravar.
-        using var buffered = new MemoryStream((int)attachment.SizeBytes);
-        await content.CopyToAsync(buffered, ct);
-        buffered.Position = 0;
-
-        var scan = await scanner.ScanAsync(buffered, ct);
-        if (!scan.Clean)
-        {
-            logger.LogWarning("AttachmentBlocked {TaskId} {FileName} {Threat} {UserId}", task.Id, attachment.FileName, scan.Threat, currentUser.UserId);
-            throw new DomainException($"The file was blocked by the antivirus: {scan.Threat}.");
         }
 
-        buffered.Position = 0;
-        await files.SaveAsync(attachment.StorageKey, buffered, ct);
-
+        var stored = false;
         try
         {
+            // Antivírus antes de gravar. O arquivo (até 10 MB) fica em memória para ser lido duas vezes: verificar e gravar.
+            using var buffered = new MemoryStream((int)attachment.SizeBytes);
+            await content.CopyToAsync(buffered, ct);
+            buffered.Position = 0;
+
+            var scan = await scanner.ScanAsync(buffered, ct);
+            if (!scan.Clean)
+            {
+                logger.LogWarning("AttachmentBlocked {TaskId} {FileName} {Threat} {UserId}", task.Id, attachment.FileName, scan.Threat, currentUser.UserId);
+                throw new DomainException($"The file was blocked by the antivirus: {scan.Threat}.");
+            }
+
+            buffered.Position = 0;
+            await files.SaveAsync(attachment.StorageKey, buffered, ct);
+            stored = true;
+
             db.TaskAttachments.Add(attachment);
             db.TaskEvents.Add(new TaskEvent(task.Id, currentUser.UserId, TaskEventType.AttachmentAdded, null, Truncate(attachment.FileName)));
             await db.SaveChangesAsync(ct);
         }
         catch
         {
-            // Não gravou no banco: o arquivo não pode ficar órfão no disco.
-            await files.TryDeleteAsync(f => f.DeleteAsync(attachment.StorageKey));
+            // Não terminou (antivírus, armazenamento ou banco): nada de arquivo órfão e o espaço reservado volta.
+            if (stored)
+                await files.TryDeleteAsync(f => f.DeleteAsync(attachment.StorageKey), logger, attachment.StorageKey);
+            await db.ReleaseAttachmentBytesAsync(task.ProjectId, attachment.SizeBytes);
             throw;
         }
 
@@ -136,14 +141,12 @@ public class AttachmentService(
         db.TaskAttachments.Remove(attachment);
         db.TaskEvents.Add(new TaskEvent(task.Id, currentUser.UserId, TaskEventType.AttachmentRemoved, Truncate(attachment.FileName)));
         await db.SaveChangesAsync(ct);
+        await db.ReleaseAttachmentBytesAsync(task.ProjectId, attachment.SizeBytes);
 
-        await files.TryDeleteAsync(f => f.DeleteAsync(attachment.StorageKey));
+        await files.TryDeleteAsync(f => f.DeleteAsync(attachment.StorageKey), logger, attachment.StorageKey);
         logger.LogInformation("AttachmentRemoved {AttachmentId} {TaskId} {UserId}", attachment.Id, task.Id, currentUser.UserId);
         await live.ChangedAsync(task.ProjectId, task.Id);
     }
-
-    private Task<long> UsedBytesAsync(Guid projectId, CancellationToken ct) =>
-        db.TaskAttachments.Where(a => db.Tasks.Any(t => t.Id == a.TaskId && t.ProjectId == projectId)).SumAsync(a => a.SizeBytes, ct);
 
     // Cultura invariante: a mensagem da API sai igual em qualquer servidor (não "0,6" num e "0.6" noutro).
     private static string Megabytes(long bytes) => (bytes / 1024d / 1024d).ToString("0.#", CultureInfo.InvariantCulture) + " MB";

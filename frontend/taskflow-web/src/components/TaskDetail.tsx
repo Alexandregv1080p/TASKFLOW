@@ -213,6 +213,7 @@ export function TaskDetail() {
                   currentUserId={user?.id}
                   isProjectOwner={project.ownerId === user?.id}
                   readOnly={readOnly}
+                  onChange={() => setVersion((v) => v + 1)}
                 />
               </section>
 

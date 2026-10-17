@@ -122,12 +122,15 @@ public class TaskService(
         var task = await FindForWriteAsync(id, ct);
         // As subtarefas vão junto (cascata); os anexos de todas saem do disco depois que o banco confirmar.
         var subtaskIds = await db.Tasks.Where(t => t.ParentId == task.Id).Select(t => t.Id).ToListAsync(ct);
+        var removedIds = subtaskIds.Prepend(task.Id).ToList();
+        var freedBytes = await db.TaskAttachments.Where(a => removedIds.Contains(a.TaskId)).SumAsync(a => a.SizeBytes, ct);
 
         db.Tasks.Remove(task);
         await db.SaveChangesAsync(ct);
+        await db.ReleaseAttachmentBytesAsync(task.ProjectId, freedBytes);
 
-        foreach (var taskId in subtaskIds.Prepend(task.Id))
-            await files.TryDeleteAsync(f => f.DeletePrefixAsync($"{task.ProjectId}/{taskId}"));
+        foreach (var taskId in removedIds)
+            await files.TryDeleteAsync(f => f.DeletePrefixAsync($"{task.ProjectId}/{taskId}"), logger, $"{task.ProjectId}/{taskId}");
 
         await live.ChangedAsync(task.ProjectId, task.Id);
     }

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace TaskFlow.Application.Common;
 
 // Onde ficam os arquivos anexados: uma pasta no disco (LocalFileStorage) ou um bucket S3 (S3FileStorage),
@@ -20,7 +22,7 @@ public static class FileStorageExtensions
 {
     // A exclusão no banco já foi gravada: falhar ao apagar o arquivo não pode desfazer nem virar erro para quem excluiu.
     // ponytail: o que falhar aqui fica órfão no disco; com volume real, um job periódico compara disco e banco.
-    public static async Task TryDeleteAsync(this IFileStorage? files, Func<IFileStorage, Task> delete)
+    public static async Task TryDeleteAsync(this IFileStorage? files, Func<IFileStorage, Task> delete, ILogger logger, string target)
     {
         if (files is null)
             return;
@@ -31,6 +33,7 @@ public static class FileStorageExtensions
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
+            logger.LogWarning(e, "StorageCleanupFailed {Target}", target);
         }
     }
 }

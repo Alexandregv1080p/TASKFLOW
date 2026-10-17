@@ -76,20 +76,20 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+// Id da conexão de tempo real desta aba (useLive preenche): vai em cada requisição para o servidor não
+// devolver a ela o aviso da própria alteração.
+export const liveConnection = { id: null as string | null }
+
+// Toda requisição passa aqui: token, id da conexão, erro de rede e resposta de erro da API.
+async function send(path: string, init: RequestInit = {}): Promise<Response> {
   const token = session.token
-  const headers: Record<string, string> = {}
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
-  if (token) headers.Authorization = `Bearer ${token}`
+  const headers = new Headers(init.headers)
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  if (liveConnection.id) headers.set('X-Live-Connection', liveConnection.id)
 
   let response: Response
-
   try {
-    response = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
+    response = await fetch(`${BASE_URL}${path}`, { ...init, headers })
   } catch {
     throw new ApiError(0, 'Não foi possível conectar à API.')
   }
@@ -100,49 +100,35 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
       session.clear()
       unauthorizedListener?.()
     }
+    if (response.status === 413) throw new ApiError(413, 'O arquivo passa de 10 MB.')
 
     // A API responde erros como { status, title, message, timestamp }.
     const error = await response.json().catch(() => null)
     throw new ApiError(response.status, error?.message ?? `Erro ${response.status}`)
   }
 
-  return response.status === 204 ? (undefined as T) : response.json()
+  return response
 }
 
-// Busca um arquivo da API com o token (um <a href> ou <img src> comum não enviaria o header).
-async function fetchFile(path: string): Promise<Response> {
-  const token = session.token
-  const response = await fetch(`${BASE_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-  if (!response.ok) {
-    const error = await response.json().catch(() => null)
-    throw new ApiError(response.status, error?.message ?? `Erro ${response.status}`)
-  }
-  return response
+async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+  const response = await send(path, {
+    method,
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+  return response.status === 204 ? (undefined as T) : response.json()
 }
 
 // Envia um arquivo (multipart). O navegador monta o Content-Type com o boundary.
 async function upload<T>(path: string, file: File): Promise<T> {
   const body = new FormData()
   body.append('file', file)
-  const token = session.token
-  let response: Response
-  try {
-    response = await fetch(`${BASE_URL}${path}`, { method: 'POST', body, headers: token ? { Authorization: `Bearer ${token}` } : {} })
-  } catch {
-    throw new ApiError(0, 'Não foi possível conectar à API.')
-  }
-
-  if (!response.ok) {
-    if (response.status === 413) throw new ApiError(413, 'O arquivo passa de 10 MB.')
-    const error = await response.json().catch(() => null)
-    throw new ApiError(response.status, error?.message ?? `Erro ${response.status}`)
-  }
-  return response.json()
+  return (await send(path, { method: 'POST', body })).json()
 }
 
 // Baixa um arquivo da API (com o token, que um link comum não enviaria) e entrega ao navegador para salvar.
 async function download(path: string): Promise<void> {
-  const response = await fetchFile(path)
+  const response = await send(path)
 
   // Nome sugerido pela API (Content-Disposition), com acentos via filename*.
   const disposition = response.headers.get('Content-Disposition') ?? ''
@@ -154,7 +140,8 @@ async function download(path: string): Promise<void> {
   link.href = url
   link.download = encoded ? decodeURIComponent(encoded) : (plain ?? 'download')
   link.click()
-  URL.revokeObjectURL(url)
+  // Revogar já no clique pode cancelar o download em alguns navegadores.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 export const api = {
@@ -208,7 +195,7 @@ export const api = {
   listAttachments: (taskId: string) => request<Attachment[]>(`/tasks/${taskId}/attachments`),
   uploadAttachment: (taskId: string, file: File) => upload<Attachment>(`/tasks/${taskId}/attachments`, file),
   downloadAttachment: (id: string) => download(`/attachments/${id}`),
-  attachmentBlob: async (id: string) => (await fetchFile(`/attachments/${id}`)).blob(),
+  attachmentBlob: async (id: string) => (await send(`/attachments/${id}`)).blob(),
   deleteAttachment: (id: string) => request<void>(`/attachments/${id}`, 'DELETE'),
 
   setTaskStar: (id: string, starred: boolean) => request<Task>(`/tasks/${id}/star`, starred ? 'PUT' : 'DELETE'),

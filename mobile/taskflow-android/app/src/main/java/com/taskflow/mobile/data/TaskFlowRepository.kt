@@ -2,6 +2,8 @@ package com.taskflow.mobile.data
 
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -59,7 +61,9 @@ class TaskFlowRepository(private val api: TaskFlowApi, private val session: Sess
         api.uploadAttachment(taskId, MultipartBody.Part.createFormData("file", fileName, body))
     }
 
-    suspend fun downloadAttachment(id: String): ByteArray = call { api.downloadAttachment(id).use { it.bytes() } }
+    // O corpo (até 10 MB) é lido fora da thread principal.
+    suspend fun downloadAttachment(id: String): ByteArray =
+        call { api.downloadAttachment(id).use { withContext(Dispatchers.IO) { it.bytes() } } }
     suspend fun addComment(taskId: String, body: String) = call { api.addComment(taskId, CommentRequest(body.trim())) }
     suspend fun notifications() = call { api.notifications() }
     suspend fun markRead(id: String) = call { api.markRead(id) }

@@ -149,7 +149,7 @@ public class ProjectService(
         db.Projects.Remove(await db.FindOwnedProjectAsync(currentUser.UserId, id, ct));
         await db.SaveChangesAsync(ct);
         // Os anexos de todas as tarefas do projeto ficam na pasta dele.
-        await files.TryDeleteAsync(f => f.DeletePrefixAsync(id.ToString()));
+        await files.TryDeleteAsync(f => f.DeletePrefixAsync(id.ToString()), logger, id.ToString());
         await live.ChangedAsync(id);
 
         logger.LogInformation("ProjectDeleted {ProjectId} {UserId}", id, currentUser.UserId);

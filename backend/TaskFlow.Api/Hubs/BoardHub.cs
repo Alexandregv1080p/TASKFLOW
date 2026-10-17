@@ -13,6 +13,10 @@ public class BoardHub(ITaskFlowDbContext db) : Hub
 
     public const string Notified = "Notified";
 
+    // Id da conexão de tempo real de quem fez a requisição: o aviso não volta para ela, que já tem o resultado
+    // (evita a corrida "aviso chega antes da resposta" e uma recarga inútil).
+    public const string ConnectionHeader = "X-Live-Connection";
+
     public static string Group(Guid projectId) => $"project:{projectId}";
 
     public static string UserGroup(Guid userId) => $"user:{userId}";
@@ -42,10 +46,16 @@ public class BoardHub(ITaskFlowDbContext db) : Hub
 
 // ponytail: grupos em memória servem para uma instância da API; com várias réplicas, ligar um backplane
 // (AddStackExchangeRedis) para o aviso chegar a conexões abertas em outra instância.
-public class SignalRLiveNotifier(IHubContext<BoardHub> hub, ILogger<SignalRLiveNotifier> logger) : ILiveNotifier
+public class SignalRLiveNotifier(IHubContext<BoardHub> hub, IHttpContextAccessor http, ILogger<SignalRLiveNotifier> logger) : ILiveNotifier
 {
-    public Task ProjectChangedAsync(Guid projectId, Guid? taskId = null) =>
-        SendAsync(hub.Clients.Group(BoardHub.Group(projectId)), BoardHub.Changed, new { projectId, taskId });
+    public Task ProjectChangedAsync(Guid projectId, Guid? taskId = null)
+    {
+        var group = BoardHub.Group(projectId);
+        var origin = http.HttpContext?.Request.Headers[BoardHub.ConnectionHeader].ToString();
+        var clients = string.IsNullOrEmpty(origin) ? hub.Clients.Group(group) : hub.Clients.GroupExcept(group, origin);
+
+        return SendAsync(clients, BoardHub.Changed, new { projectId, taskId });
+    }
 
     public Task UsersNotifiedAsync(IReadOnlyCollection<Guid> userIds) =>
         SendAsync(hub.Clients.Groups(userIds.Select(BoardHub.UserGroup)), BoardHub.Notified, new { });
