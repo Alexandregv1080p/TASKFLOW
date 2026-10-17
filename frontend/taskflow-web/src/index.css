@@ -277,6 +277,12 @@ kbd {
   outline: none;
 }
 
+/* O campo é o único foco da paleta e fica sempre ativo (o cursor pisca nele): o contorno de foco global
+   desenharia um segundo retângulo dentro do primeiro. */
+.palette__field input:focus-visible {
+  outline: none;
+}
+
 .palette__list {
   flex: 1;
   margin: 0;
@@ -1452,6 +1458,14 @@ textarea {
 .task-card .avatar {
   position: relative;
   z-index: 1;
+}
+
+.task-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  margin-top: 0.45rem;
 }
 
 .task-card__meta:empty {
