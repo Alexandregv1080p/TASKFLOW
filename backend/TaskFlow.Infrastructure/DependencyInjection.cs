@@ -10,7 +10,7 @@ namespace TaskFlow.Infrastructure;
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services, string connectionString, JwtOptions jwt, string storagePath)
+        this IServiceCollection services, string connectionString, JwtOptions jwt, StorageOptions storage, string defaultStoragePath)
     {
         if (jwt.Secret.Length < JwtOptions.MinSecretLength)
             throw new InvalidOperationException($"Jwt:Secret must have at least {JwtOptions.MinSecretLength} characters.");
@@ -21,7 +21,10 @@ public static class DependencyInjection
         services.AddSingleton(jwt);
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
-        services.AddSingleton<IFileStorage>(new LocalFileStorage(storagePath));
+        // Anexos: pasta local (uma instância) ou S3 (várias réplicas, ou para não depender do disco do servidor).
+        services.AddSingleton<IFileStorage>(storage.Provider.Equals("S3", StringComparison.OrdinalIgnoreCase)
+            ? new S3FileStorage(storage.S3)
+            : new LocalFileStorage(storage.Path ?? defaultStoragePath));
 
         return services;
     }

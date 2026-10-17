@@ -29,6 +29,9 @@ public class TaskTypeAndSubtaskTests
 
         Assert.Equal(["Desenvolvimento", "Bug", "Integração"], defaults.Select(t => t.Name));
         Assert.All(defaults, t => Assert.Equal(projectId, t.ProjectId));
+        // Datas estritamente crescentes: a lista do projeto (ordenada por data) mantém esta ordem.
+        Assert.Equal(defaults.Select(t => t.CreatedAt).Order(), defaults.Select(t => t.CreatedAt));
+        Assert.Equal(3, defaults.Select(t => t.CreatedAt).Distinct().Count());
     }
 
     [Fact]

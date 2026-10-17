@@ -37,12 +37,16 @@ public partial class TaskType : Entity
     }
 
     // Todo projeto novo já nasce com estes; o dono renomeia, apaga ou cria outros.
-    public static IEnumerable<TaskType> Defaults(Guid projectId) =>
-    [
-        new(projectId, "Desenvolvimento", "#1868DB"),
-        new(projectId, "Bug", "#C9372C"),
-        new(projectId, "Integração", "#6E5DC6"),
-    ];
+    // A lista é ordenada por CreatedAt: criados no mesmo instante, o relógio (resolução de até ~15 ms no Windows)
+    // daria datas iguais e ordem aleatória. Por isso cada um ganha 1 µs a mais que o anterior.
+    public static IEnumerable<TaskType> Defaults(Guid projectId)
+    {
+        var now = DateTime.UtcNow;
+
+        return new (string Name, string Color)[] { ("Desenvolvimento", "#1868DB"), ("Bug", "#C9372C"), ("Integração", "#6E5DC6") }
+            .Select((d, i) => new TaskType(projectId, d.Name, d.Color) { CreatedAt = now.AddTicks(i * 10) })
+            .ToList();
+    }
 
     private static string ValidColor(string? color) =>
         color is not null && HexColor().IsMatch(color)

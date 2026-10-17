@@ -56,6 +56,15 @@ services:
       # 8080 = API; 9090 = /metrics, só dentro da rede Docker (não publicada no host).
       ASPNETCORE_HTTP_PORTS: "8080;9090"
       Metrics__Port: "9090"
+      # Anexos: Local (volume abaixo) ou S3 (SeaweedFS do perfil "s3"; na AWS, ServiceUrl vazia e o bucket real).
+      Storage__Provider: ${STORAGE_PROVIDER:-Local}
+      Storage__S3__ServiceUrl: http://s3:8333
+      Storage__S3__Bucket: taskflow-attachments
+      Storage__S3__AccessKey: ${S3_ACCESS_KEY:-taskflow}
+      Storage__S3__SecretKey: ${S3_SECRET_KEY:-}
+      # Antivírus: vazio = desligado; "clamav" = verifica cada anexo no ClamAV do perfil "antivirus".
+      Antivirus__Host: ${ANTIVIRUS_HOST:-}
+      Attachments__ProjectQuotaMb: ${PROJECT_QUOTA_MB:-100}
 
     ports:
       - "${API_PORT:-8080}:8080"
@@ -84,6 +93,44 @@ services:
 
     networks:
       - frontend
+
+  # Armazenamento S3 local (SeaweedFS, compatível com S3): docker compose --profile s3 up -d, com STORAGE_PROVIDER=S3
+  # no .env. Porta só em 127.0.0.1 (testes de integração); a API fala com ele pela rede interna.
+  # A credencial é montada a partir do .env na subida (o SeaweedFS lê as chaves de um JSON).
+  s3:
+    image: chrislusf/seaweedfs:4.48
+    container_name: taskflow-s3
+    profiles: [s3]
+    restart: unless-stopped
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-taskflow}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        printf '{"identities":[{"name":"taskflow","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}'
+        "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json
+        && exec weed server -dir=/data -ip.bind=0.0.0.0 -s3 -s3.port=8333 -s3.config=/tmp/s3.json
+    volumes:
+      - taskflow_s3_data:/data
+    ports:
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
+    networks:
+      - backend
+
+  # Antivírus (ClamAV): docker compose --profile antivirus up -d, com ANTIVIRUS_HOST=clamav no .env.
+  # Pesado (~1 GB de memória) e leva alguns minutos para baixar as assinaturas na primeira vez.
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: taskflow-clamav
+    profiles: [antivirus]
+    restart: unless-stopped
+    volumes:
+      - taskflow_clamav_data:/var/lib/clamav
+    ports:
+      - "127.0.0.1:${CLAMAV_PORT:-3310}:3310"
+    networks:
+      - backend
 
   # Observabilidade: sobe só com  docker compose --profile observability up -d
   # Portas presas a 127.0.0.1: o Prometheus não tem autenticação e não deve ficar exposto na rede.
@@ -146,5 +193,7 @@ networks:
 volumes:
   taskflow_postgres_data:
   taskflow_attachments:
+  taskflow_s3_data:
+  taskflow_clamav_data:
   taskflow_prometheus_data:
   taskflow_grafana_data:

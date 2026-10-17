@@ -3,7 +3,7 @@ using TaskFlow.Application.Common;
 namespace TaskFlow.Infrastructure.Storage;
 
 // Anexos numa pasta do disco (no Docker, um volume em /app/data). Serve para uma instância da API.
-// ponytail: com várias réplicas, trocar por armazenamento de objetos (S3, Azure Blob, MinIO) implementando IFileStorage.
+// Com várias réplicas, usar o S3FileStorage (Storage:Provider = S3).
 public class LocalFileStorage(string root) : IFileStorage
 {
     private readonly string _root = Path.GetFullPath(root);
@@ -17,7 +17,8 @@ public class LocalFileStorage(string root) : IFileStorage
         await content.CopyToAsync(file, ct);
     }
 
-    public Stream OpenRead(string key) => new FileStream(PathFor(key), FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+    public Task<Stream> OpenReadAsync(string key, CancellationToken ct = default) =>
+        Task.FromResult<Stream>(new FileStream(PathFor(key), FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true));
 
     public Task DeleteAsync(string key)
     {

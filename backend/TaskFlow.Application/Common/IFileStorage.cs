@@ -1,12 +1,13 @@
 namespace TaskFlow.Application.Common;
 
-// Onde ficam os arquivos anexados. Hoje é uma pasta no disco (LocalFileStorage); trocar por S3/Azure Blob é
-// implementar esta interface. As chaves são geradas pelo servidor ("projeto/tarefa/anexo").
+// Onde ficam os arquivos anexados: uma pasta no disco (LocalFileStorage) ou um bucket S3 (S3FileStorage),
+// escolhido por configuração. Outro destino (Azure Blob...) é outra implementação desta interface.
+// As chaves são geradas pelo servidor ("projeto/tarefa/anexo").
 public interface IFileStorage
 {
     Task SaveAsync(string key, Stream content, CancellationToken ct = default);
 
-    Stream OpenRead(string key);
+    Task<Stream> OpenReadAsync(string key, CancellationToken ct = default);
 
     Task DeleteAsync(string key);
 
@@ -27,7 +28,7 @@ public static class FileStorageExtensions
         {
             await delete(files);
         }
-        catch (IOException)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
         }
     }

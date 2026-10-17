@@ -69,7 +69,7 @@ public class AttachmentService(
     {
         var attachment = await FindAsync(id, ct);
 
-        return new AttachmentDownload(files.OpenRead(attachment.StorageKey), attachment.FileName, attachment.ContentType);
+        return new AttachmentDownload(await files.OpenReadAsync(attachment.StorageKey, ct), attachment.FileName, attachment.ContentType);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)

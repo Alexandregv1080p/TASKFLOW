@@ -14,6 +14,7 @@ using TaskFlow.Application.Common;
 using TaskFlow.Infrastructure;
 using TaskFlow.Infrastructure.Persistence;
 using TaskFlow.Infrastructure.Security;
+using TaskFlow.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,9 +37,10 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
 
 builder.Services.AddApplication();
-// Pasta dos anexos. No Docker é um volume (/app/data); nos testes, uma pasta temporária.
-var storagePath = builder.Configuration["Storage:Path"] ?? Path.Combine(builder.Environment.ContentRootPath, "data", "attachments");
-builder.Services.AddInfrastructure(connectionString, jwt, storagePath);
+// Anexos: Storage:Provider = Local (pasta; no Docker, o volume /app/data) ou S3 (bucket; MinIO no compose).
+var storage = builder.Configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
+builder.Services.AddInfrastructure(
+    connectionString, jwt, storage, Path.Combine(builder.Environment.ContentRootPath, "data", "attachments"));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
