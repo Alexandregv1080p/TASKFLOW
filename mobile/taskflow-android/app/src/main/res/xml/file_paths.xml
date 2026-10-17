@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Só a pasta de anexos baixados (no cache do app) pode ser entregue a outros apps para abrir. -->
+<paths>
+    <cache-path name="attachments" path="attachments/" />
+</paths>

@@ -48,7 +48,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
+import com.taskflow.mobile.data.ApiException
+import com.taskflow.mobile.data.Attachment
 import com.taskflow.mobile.data.Comment
+import com.taskflow.mobile.data.StorageUsage
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.taskflow.mobile.data.LiveEvent
 import com.taskflow.mobile.data.LiveUpdates
 import com.taskflow.mobile.data.Member
@@ -80,6 +87,8 @@ data class TaskDetail(
     val comments: List<Comment>,
     val tasks: List<Task>,
     val types: List<TaskType>,
+    val attachments: List<Attachment>,
+    val storage: StorageUsage?,
 )
 
 class TaskViewModel(
@@ -103,7 +112,13 @@ class TaskViewModel(
         val comments = async { repository.comments(taskId) }
         val tasks = async { repository.tasks(projectId) }
         val types = async { repository.taskTypes(projectId) }
-        TaskDetail(task.await(), project.await(), members.await(), comments.await(), tasks.await(), types.await())
+        val attachments = async { repository.attachments(taskId) }
+        // Uso do espaço é só informativo: se falhar, a tela abre sem ele.
+        val storage = async { runCatching { repository.storage(projectId) }.getOrNull() }
+        TaskDetail(
+            task.await(), project.await(), members.await(), comments.await(), tasks.await(), types.await(),
+            attachments.await(), storage.await(),
+        )
     }
 
     fun move(status: TaskStatus) = act { repository.changeStatus(taskId, status) }
@@ -113,6 +128,27 @@ class TaskViewModel(
     fun changeType(typeId: String?) = act { repository.changeType(taskId, typeId) }
 
     fun changeParent(parentId: String?) = act { repository.changeParent(taskId, parentId) }
+
+    fun uploadAttachment(fileName: String, mimeType: String?, bytes: ByteArray) =
+        act { repository.uploadAttachment(taskId, fileName, mimeType, bytes) }
+
+    fun deleteAttachment(attachment: Attachment) = act { repository.deleteAttachment(attachment.id) }
+
+    // Baixa para o cache do app (pasta própria por anexo, com o nome original) e entrega o arquivo para abrir.
+    fun openAttachment(attachment: Attachment, cacheDir: File, onReady: (File) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val bytes = repository.downloadAttachment(attachment.id)
+                val file = withContext(Dispatchers.IO) {
+                    File(cacheDir, "attachments/${attachment.id}").apply { mkdirs() }.resolve(File(attachment.fileName).name)
+                        .apply { writeBytes(bytes) }
+                }
+                onReady(file)
+            } catch (e: ApiException) {
+                message.value = e.message
+            }
+        }
+    }
 
     fun createSubtask(parent: Task, title: String, onCreated: () -> Unit) = act {
         repository.createSubtask(parent, title)
@@ -229,6 +265,21 @@ private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: Ta
 
         Section("Descrição") {
             Text(task.description ?: "Sem descrição.", color = if (task.description == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+        }
+
+        Section("Anexos") {
+            AttachmentsSection(
+                attachments = detail.attachments,
+                usage = detail.storage,
+                members = detail.members,
+                currentUserId = currentUserId,
+                isProjectOwner = detail.project.ownerId == currentUserId,
+                readOnly = readOnly,
+                onUpload = viewModel::uploadAttachment,
+                onOpen = viewModel::openAttachment,
+                onDelete = viewModel::deleteAttachment,
+                onError = { viewModel.message.value = it },
+            )
         }
 
         // Um nível só: subtarefa não tem a seção.

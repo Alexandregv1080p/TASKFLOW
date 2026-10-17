@@ -4,7 +4,10 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -46,6 +49,17 @@ class TaskFlowRepository(private val api: TaskFlowApi, private val session: Sess
     suspend fun changeType(taskId: String, typeId: String?) = call { api.changeType(taskId, TypeRequest(typeId)) }
     suspend fun changeParent(taskId: String, parentId: String?) = call { api.changeParent(taskId, ParentRequest(parentId)) }
     suspend fun comments(taskId: String) = call { api.comments(taskId) }
+    suspend fun attachments(taskId: String) = call { api.attachments(taskId) }
+    suspend fun storage(projectId: String) = call { api.storage(projectId) }
+    suspend fun deleteAttachment(id: String) = call { api.deleteAttachment(id) }
+
+    // O tipo de conteúdo enviado é só informativo: a API decide pela extensão do nome.
+    suspend fun uploadAttachment(taskId: String, fileName: String, mimeType: String?, bytes: ByteArray) = call {
+        val body = bytes.toRequestBody((mimeType ?: "application/octet-stream").toMediaTypeOrNull())
+        api.uploadAttachment(taskId, MultipartBody.Part.createFormData("file", fileName, body))
+    }
+
+    suspend fun downloadAttachment(id: String): ByteArray = call { api.downloadAttachment(id).use { it.bytes() } }
     suspend fun addComment(taskId: String, body: String) = call { api.addComment(taskId, CommentRequest(body.trim())) }
     suspend fun notifications() = call { api.notifications() }
     suspend fun markRead(id: String) = call { api.markRead(id) }

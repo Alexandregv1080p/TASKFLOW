@@ -1,13 +1,18 @@
 package com.taskflow.mobile.data
 
+import okhttp3.MultipartBody
+import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 // Só os endpoints que o app usa; os mesmos do site.
 interface TaskFlowApi {
@@ -61,6 +66,23 @@ interface TaskFlowApi {
 
     @PATCH("api/tasks/{id}/assignee")
     suspend fun assign(@Path("id") id: String, @Body request: AssignRequest): Task
+
+    @GET("api/tasks/{id}/attachments")
+    suspend fun attachments(@Path("id") taskId: String): List<Attachment>
+
+    @Multipart
+    @POST("api/tasks/{id}/attachments")
+    suspend fun uploadAttachment(@Path("id") taskId: String, @Part file: MultipartBody.Part): Attachment
+
+    @Streaming
+    @GET("api/attachments/{id}")
+    suspend fun downloadAttachment(@Path("id") id: String): ResponseBody
+
+    @DELETE("api/attachments/{id}")
+    suspend fun deleteAttachment(@Path("id") id: String)
+
+    @GET("api/projects/{id}/storage")
+    suspend fun storage(@Path("id") projectId: String): StorageUsage
 
     @GET("api/tasks/{id}/comments")
     suspend fun comments(@Path("id") taskId: String): List<Comment>

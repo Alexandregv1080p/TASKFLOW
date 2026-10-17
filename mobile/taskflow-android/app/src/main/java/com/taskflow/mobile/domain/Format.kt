@@ -73,6 +73,27 @@ val TYPE_PALETTE = listOf("#1868DB", "#C9372C", "#6E5DC6", "#22A06B", "#CF7A00",
 fun hexColor(hex: String): Long? =
     Regex("^#([0-9A-Fa-f]{6})$").find(hex)?.let { 0xFF000000L or it.groupValues[1].toLong(16) }
 
+// Anexos: mesmo limite e mesmos tipos da API (o seletor do sistema só mostra estes).
+const val MAX_ATTACHMENT_BYTES = 10L * 1024 * 1024
+
+val ATTACHMENT_MIME_TYPES = arrayOf(
+    "image/*",
+    "application/pdf",
+    "text/*",
+    "application/json",
+    "application/zip",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+)
+
+// "812 B", "34 KB", "2,5 MB" (como no site).
+fun formatSize(bytes: Long): String = when {
+    bytes < 1024 -> "$bytes B"
+    bytes < 1024 * 1024 -> "${Math.round(bytes / 1024.0)} KB"
+    else -> java.text.DecimalFormat("#,##0.#", java.text.DecimalFormatSymbols(Locale.forLanguageTag("pt-BR"))).format(bytes / 1024.0 / 1024.0) + " MB"
+}
+
 // Iniciais do avatar: "Ana Souza" -> AS.
 fun initials(name: String): String =
     name.split(' ').filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase(Locale.ROOT) }.ifEmpty { "?" }

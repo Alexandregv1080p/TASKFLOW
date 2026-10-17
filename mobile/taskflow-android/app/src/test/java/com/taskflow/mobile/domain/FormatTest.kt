@@ -58,6 +58,15 @@ class FormatTest {
     }
 
     @Test
+    fun `tamanho de arquivo como no site`() {
+        assertEquals("812 B", formatSize(812))
+        assertEquals("34 KB", formatSize(34 * 1024))
+        assertEquals("2 MB", formatSize(2L * 1024 * 1024))
+        assertEquals("2,5 MB", formatSize(2_621_440))
+        assertEquals("100 MB", formatSize(100L * 1024 * 1024))
+    }
+
+    @Test
     fun `iniciais do avatar`() {
         assertEquals("AS", initials("Ana Souza"))
         assertEquals("B", initials("bia"))

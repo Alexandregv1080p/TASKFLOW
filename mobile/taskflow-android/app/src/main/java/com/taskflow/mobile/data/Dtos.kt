@@ -108,6 +108,20 @@ data class CreateTaskRequest(
 data class ParentRequest(val parentId: String?)
 
 @Serializable
+data class Attachment(
+    val id: String,
+    val fileName: String,
+    val contentType: String,
+    val sizeBytes: Long,
+    val uploadedById: String? = null,
+    val createdAt: String,
+)
+
+// Espaço de anexos usado pelo projeto e a cota.
+@Serializable
+data class StorageUsage(val usedBytes: Long, val quotaBytes: Long)
+
+@Serializable
 enum class NotificationType { Assigned, Mentioned, Commented }
 
 @Serializable

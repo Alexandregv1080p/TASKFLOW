@@ -6,6 +6,7 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
@@ -148,6 +149,27 @@ class TaskFlowRepositoryTest {
         assertEquals("PUT /api/task-types/ty2", server.takeRequest().let { "${it.method} ${it.path}" })
         repository.deleteTaskType("ty2")
         assertEquals("DELETE /api/task-types/ty2", server.takeRequest().let { "${it.method} ${it.path}" })
+    }
+
+    @Test
+    fun `anexos enviados em multipart, baixados e recusados com a mensagem da API`() = runTest {
+        session.signIn(Session("jwt", "u1", "Ana"))
+        server.enqueue(json(201, """{"id":"a1","fileName":"print.png","contentType":"image/png","sizeBytes":3,"uploadedById":"u1","createdAt":"2026-10-17T10:00:00Z"}"""))
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(byteArrayOf(1, 2, 3))))
+        server.enqueue(json(400, """{"status":400,"message":"The file was blocked by the antivirus: Eicar-Test-Signature."}"""))
+
+        val uploaded = repository.uploadAttachment("t1", "print.png", "image/png", byteArrayOf(1, 2, 3))
+        assertEquals(3L, uploaded.sizeBytes)
+        val upload = server.takeRequest()
+        assertEquals("/api/tasks/t1/attachments", upload.path)
+        assertTrue(upload.getHeader("Content-Type")!!.startsWith("multipart/form-data"))
+        assertTrue(upload.body.readUtf8().contains("name=\"file\"; filename=\"print.png\""))
+
+        assertTrue(byteArrayOf(1, 2, 3).contentEquals(repository.downloadAttachment("a1")))
+        assertEquals("/api/attachments/a1", server.takeRequest().path)
+
+        val blocked = expectError { repository.uploadAttachment("t1", "eicar.txt", "text/plain", "x".toByteArray()) }
+        assertEquals("The file was blocked by the antivirus: Eicar-Test-Signature.", blocked.message)
     }
 
     @Test
