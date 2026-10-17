@@ -17,8 +17,15 @@ public class LocalFileStorage(string root) : IFileStorage
         await content.CopyToAsync(file, ct);
     }
 
-    public Task<Stream> OpenReadAsync(string key, CancellationToken ct = default) =>
-        Task.FromResult<Stream>(new FileStream(PathFor(key), FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true));
+    public Task<Stream> OpenReadAsync(string key, CancellationToken ct = default)
+    {
+        var path = PathFor(key);
+
+        // Pasta inexistente daria DirectoryNotFoundException: o contrato é FileNotFoundException para "não existe".
+        return File.Exists(path)
+            ? Task.FromResult<Stream>(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true))
+            : throw new FileNotFoundException("Attachment file not found.", key);
+    }
 
     public Task DeleteAsync(string key)
     {

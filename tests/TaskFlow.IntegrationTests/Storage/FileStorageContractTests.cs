@@ -51,7 +51,10 @@ public class FileStorageContractTests
         Assert.Equal("conteúdo do anexo", await ReadAsync(storage, key));
 
         await storage.DeleteAsync(key);
-        await Assert.ThrowsAnyAsync<Exception>(() => ReadAsync(storage, key));
+        await Assert.ThrowsAsync<FileNotFoundException>(() => ReadAsync(storage, key));
+
+        // Nunca existiu (nem a pasta, no caso local): o mesmo erro.
+        await Assert.ThrowsAsync<FileNotFoundException>(() => ReadAsync(storage, $"{Guid.NewGuid()}/nada"));
     }
 
     [Theory]

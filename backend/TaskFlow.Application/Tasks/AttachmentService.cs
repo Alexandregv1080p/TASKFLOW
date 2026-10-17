@@ -111,7 +111,16 @@ public class AttachmentService(
     {
         var attachment = await FindAsync(id, ct);
 
-        return new AttachmentDownload(await files.OpenReadAsync(attachment.StorageKey, ct), attachment.FileName, attachment.ContentType);
+        try
+        {
+            return new AttachmentDownload(await files.OpenReadAsync(attachment.StorageKey, ct), attachment.FileName, attachment.ContentType);
+        }
+        catch (FileNotFoundException)
+        {
+            // O registro existe mas o arquivo não (apagado à mão, armazenamento trocado): 404 para quem pediu, alerta no log.
+            logger.LogWarning("AttachmentFileMissing {AttachmentId} {StorageKey}", attachment.Id, attachment.StorageKey);
+            throw new NotFoundException("The file of this attachment is no longer available.");
+        }
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)

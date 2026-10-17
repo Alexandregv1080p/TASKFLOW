@@ -63,9 +63,16 @@ public sealed class S3FileStorage : IFileStorage, IDisposable
 
     public async Task<Stream> OpenReadAsync(string key, CancellationToken ct = default)
     {
-        var response = await _s3.GetObjectAsync(_bucket, key, ct);
+        try
+        {
+            var response = await _s3.GetObjectAsync(_bucket, key, ct);
 
-        return response.ResponseStream;
+            return response.ResponseStream;
+        }
+        catch (AmazonS3Exception e) when (e.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new FileNotFoundException("Attachment file not found.", key);
+        }
     }
 
     public Task DeleteAsync(string key) => _s3.DeleteObjectAsync(_bucket, key);

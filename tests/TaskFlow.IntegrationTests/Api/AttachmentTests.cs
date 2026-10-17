@@ -89,6 +89,16 @@ public class AttachmentTests(DatabaseFixture db) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Arquivo_sumido_do_armazenamento_responde_404()
+    {
+        var attachment = await (await UploadAsync(_member, _taskId, "sumiu.txt", "conteúdo"u8.ToArray())).Content.ReadFromJsonAsync<JsonElement>();
+        var id = attachment.GetProperty("id").GetString()!;
+        File.Delete(Path.Combine(DatabaseFixture.StoragePath, _projectId, _taskId, id));
+
+        await ApiTests.AssertErrorAsync(await _member.GetAsync($"/api/attachments/{id}"), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Recusa_tipo_perigoso_arquivo_grande_e_visualizador()
     {
         await ApiTests.AssertErrorAsync(await UploadAsync(_member, _taskId, "fotos.exe", [1, 2, 3]), HttpStatusCode.BadRequest);

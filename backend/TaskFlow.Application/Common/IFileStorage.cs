@@ -7,6 +7,7 @@ public interface IFileStorage
 {
     Task SaveAsync(string key, Stream content, CancellationToken ct = default);
 
+    // Arquivo que não existe: FileNotFoundException, em qualquer implementação.
     Task<Stream> OpenReadAsync(string key, CancellationToken ct = default);
 
     Task DeleteAsync(string key);
