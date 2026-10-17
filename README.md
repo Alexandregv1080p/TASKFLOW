@@ -67,7 +67,7 @@ A API segue Clean Architecture: `Domain` (entidades e regras), `Application` (ca
 | Onde | O que | Quantos |
 | --- | --- | --- |
 | Backend | Unitários (domínio) e integração contra PostgreSQL real, com a API em memória | 130+ |
-| Android | ViewModel e repositório (JUnit + MockWebServer) | 15 |
+| Android | Comunicação com a API (JUnit + MockWebServer) e regras compartilhadas com o site | 15 |
 | Ponta a ponta | Playwright contra a stack completa em containers, incluindo duas pessoas em tempo real | 7 |
 
 O CI (GitHub Actions) roda tudo isso em cada pull request: build e testes do backend (com um S3 de verdade para os testes de armazenamento), lint e build do site, testes, lint e APK do Android, e a stack inteira em Docker com smoke test e os testes de ponta a ponta. Na `main`, publica as imagens no GitHub Container Registry.
