@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -14,5 +15,9 @@ export default defineConfig({
       '/health': apiUrl,
       '/hubs': { target: apiUrl, ws: true },
     },
+  },
+  // Sem jsdom/testing-library por enquanto: só testamos utils puros (sem DOM).
+  test: {
+    environment: 'node',
   },
 })

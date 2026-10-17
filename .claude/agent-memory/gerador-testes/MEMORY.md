@@ -1,0 +1,2 @@
+- [Setup de testes do frontend web (Vitest)](project_frontend_web_testing_setup.md) — como/onde rodar, convenção de vite.config.ts + fake timers
+- [Bug do npm 10.8.2 (edgesOut)](feedback_npm_edgesout.md) — usar --legacy-peer-deps ao instalar deps de teste
