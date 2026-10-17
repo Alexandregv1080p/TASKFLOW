@@ -10,6 +10,7 @@ const ACCEPT = '.png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.log,.md,.csv,.json,.zip,.d
 const MAX_BYTES = 10 * 1024 * 1024
 
 interface Props {
+  projectId: string
   taskId: string
   // Muda a cada alteração (inclusive de outras pessoas, em tempo real): recarrega a lista.
   version: number
@@ -22,12 +23,14 @@ interface Props {
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`
+  return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024)} MB`
 }
 
 // Anexos da tarefa: prints de bug, documentos, logs. Também dá para soltar o arquivo em cima da seção.
-export function Attachments({ taskId, version, users, currentUserId, isProjectOwner, readOnly }: Props) {
+export function Attachments({ projectId, taskId, version, users, currentUserId, isProjectOwner, readOnly }: Props) {
   const { data, error, reload, setData } = useAsync(() => api.listAttachments(taskId), [taskId, version])
+  // Espaço do projeto (cota somando os anexos de todas as tarefas); recarrega junto com a lista.
+  const { data: storage, reload: reloadStorage } = useAsync(() => api.projectStorage(projectId), [projectId, version, data?.length])
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [actionError, setActionError] = useState<string>()
@@ -53,6 +56,7 @@ export function Attachments({ taskId, version, users, currentUserId, isProjectOw
         setUploading(false)
       }
     }
+    reloadStorage()
   }
 
   async function remove(attachment: Attachment) {
@@ -152,6 +156,13 @@ export function Attachments({ taskId, version, users, currentUserId, isProjectOw
           </button>
           <span className="field__hint">Ou solte o arquivo aqui. Até 10 MB: imagens, PDF, texto, CSV, ZIP e documentos do Office.</span>
         </>
+      )}
+
+      {storage && (
+        <p className={storage.usedBytes / storage.quotaBytes >= 0.8 ? 'attachments__quota attachments__quota--high' : 'attachments__quota'}>
+          Espaço do projeto: {formatSize(storage.usedBytes)} de {formatSize(storage.quotaBytes)}
+          {storage.usedBytes / storage.quotaBytes >= 0.8 && ' (quase cheio: exclua anexos antigos para liberar)'}
+        </p>
       )}
 
       {actionError && (

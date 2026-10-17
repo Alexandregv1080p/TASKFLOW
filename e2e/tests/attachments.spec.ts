@@ -27,7 +27,8 @@ test('anexar imagem e arquivo grande, baixar e excluir', async ({ page, request 
     buffer: Buffer.alloc(2 * 1024 * 1024, 1),
   })
   await expect(detail.getByRole('button', { name: 'contrato.pdf', exact: true })).toBeVisible()
-  await expect(detail.getByText('2,0 MB')).toBeVisible()
+  await expect(detail.getByText('2 MB ·')).toBeVisible()
+  await expect(detail.getByText('Espaço do projeto: 2 MB de 100 MB')).toBeVisible()
 
   // Tipo não aceito: recusado pela API com mensagem.
   await detail.getByLabel('Escolher arquivos para anexar').setInputFiles({ name: 'virus.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('MZ') })

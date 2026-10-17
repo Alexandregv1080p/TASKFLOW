@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Common;
@@ -14,6 +15,16 @@ public record AttachmentResponse(Guid Id, string FileName, string ContentType, l
 
 public record AttachmentDownload(Stream Content, string FileName, string ContentType);
 
+public record StorageUsageResponse(long UsedBytes, long QuotaBytes);
+
+// Seção "Attachments" da configuração. A cota é por projeto, somando os anexos de todas as tarefas dele.
+public record AttachmentOptions
+{
+    public int ProjectQuotaMb { get; init; } = 100;
+
+    public long ProjectQuotaBytes => ProjectQuotaMb * 1024L * 1024L;
+}
+
 // Anexos das tarefas. Ver e baixar: quem está no projeto. Anexar: quem pode editar (não visualizador, projeto ativo).
 // Excluir: quem anexou ou o dono do projeto.
 public class AttachmentService(
@@ -21,8 +32,17 @@ public class AttachmentService(
     ICurrentUser currentUser,
     IFileStorage files,
     ILogger<AttachmentService> logger,
+    AttachmentOptions options,
     ILiveNotifier? live = null)
 {
+    // Quanto o projeto já usa em anexos e quanto pode usar. Quem está no projeto vê.
+    public async Task<StorageUsageResponse> UsageAsync(Guid projectId, CancellationToken ct = default)
+    {
+        var project = await db.FindAccessibleProjectAsync(currentUser.UserId, projectId, ct);
+
+        return new StorageUsageResponse(await UsedBytesAsync(project.Id, ct), options.ProjectQuotaBytes);
+    }
+
     public async Task<IReadOnlyList<AttachmentResponse>> ListAsync(Guid taskId, CancellationToken ct = default)
     {
         var task = await FindTaskAsync(taskId, ct);
@@ -42,6 +62,14 @@ public class AttachmentService(
 
         // Valida nome, tipo e tamanho antes de gravar qualquer coisa no disco.
         var attachment = new TaskAttachment(task.ProjectId, task.Id, currentUser.UserId, fileName, size);
+
+        // ponytail: dois envios ao mesmo tempo no mesmo projeto podem passar juntos e estourar a cota por um arquivo;
+        // para garantir à risca, um lock por projeto (pg_advisory_xact_lock) em volta da conta e da gravação.
+        var used = await UsedBytesAsync(task.ProjectId, ct);
+        if (used + attachment.SizeBytes > options.ProjectQuotaBytes)
+            throw new DomainException(
+                $"This project's attachment space is full: {Megabytes(used)} of {Megabytes(options.ProjectQuotaBytes)} used. " +
+                "Delete old attachments to free space.");
 
         await files.SaveAsync(attachment.StorageKey, content, ct);
 
@@ -90,6 +118,12 @@ public class AttachmentService(
         logger.LogInformation("AttachmentRemoved {AttachmentId} {TaskId} {UserId}", attachment.Id, task.Id, currentUser.UserId);
         await live.ChangedAsync(task.ProjectId, task.Id);
     }
+
+    private Task<long> UsedBytesAsync(Guid projectId, CancellationToken ct) =>
+        db.TaskAttachments.Where(a => db.Tasks.Any(t => t.Id == a.TaskId && t.ProjectId == projectId)).SumAsync(a => a.SizeBytes, ct);
+
+    // Cultura invariante: a mensagem da API sai igual em qualquer servidor (não "0,6" num e "0.6" noutro).
+    private static string Megabytes(long bytes) => (bytes / 1024d / 1024d).ToString("0.#", CultureInfo.InvariantCulture) + " MB";
 
     private static string Truncate(string value) =>
         value.Length <= TaskEvent.ValueMaxLength ? value : value[..TaskEvent.ValueMaxLength];

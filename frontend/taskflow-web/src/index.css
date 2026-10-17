@@ -1653,6 +1653,16 @@ textarea {
   color: var(--muted);
 }
 
+.attachments__quota {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.attachments__quota--high {
+  color: var(--high);
+  font-weight: 600;
+}
+
 .attachments__add {
   display: inline-flex;
   align-items: center;

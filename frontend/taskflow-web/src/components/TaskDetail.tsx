@@ -206,6 +206,7 @@ export function TaskDetail() {
               <section className="task-detail__section">
                 <h3>Anexos</h3>
                 <Attachments
+                  projectId={project.id}
                   taskId={task.id}
                   version={version + liveVersion}
                   users={users}

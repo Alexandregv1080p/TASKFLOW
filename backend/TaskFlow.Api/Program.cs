@@ -11,6 +11,7 @@ using TaskFlow.Api.Hubs;
 using TaskFlow.Api.Middlewares;
 using TaskFlow.Application;
 using TaskFlow.Application.Common;
+using TaskFlow.Application.Tasks;
 using TaskFlow.Infrastructure;
 using TaskFlow.Infrastructure.Persistence;
 using TaskFlow.Infrastructure.Security;
@@ -37,6 +38,7 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
 
 builder.Services.AddApplication();
+builder.Services.AddSingleton(builder.Configuration.GetSection("Attachments").Get<AttachmentOptions>() ?? new AttachmentOptions());
 // Anexos: Storage:Provider = Local (pasta; no Docker, o volume /app/data) ou S3 (bucket; MinIO no compose).
 var storage = builder.Configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
 builder.Services.AddInfrastructure(

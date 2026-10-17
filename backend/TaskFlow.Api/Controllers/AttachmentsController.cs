@@ -12,6 +12,10 @@ public class AttachmentsController(AttachmentService attachments) : ControllerBa
     // Um pouco acima de 10 MB para caber o envelope do multipart; o limite real (10 MB) é regra do domínio.
     private const long RequestLimit = TaskAttachment.MaxSizeBytes + 1024 * 1024;
 
+    // Espaço de anexos usado pelo projeto e a cota.
+    [HttpGet("projects/{id:guid}/storage")]
+    public Task<StorageUsageResponse> Storage(Guid id, CancellationToken ct) => attachments.UsageAsync(id, ct);
+
     [HttpGet("tasks/{id:guid}/attachments")]
     public Task<IReadOnlyList<AttachmentResponse>> List(Guid id, CancellationToken ct) => attachments.ListAsync(id, ct);
 

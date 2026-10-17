@@ -204,6 +204,7 @@ export const api = {
   deleteProject: (id: string) => request<void>(`/projects/${id}`, 'DELETE'),
   exportProjectCsv: (id: string) => download(`/projects/${id}/export`),
 
+  projectStorage: (projectId: string) => request<{ usedBytes: number; quotaBytes: number }>(`/projects/${projectId}/storage`),
   listAttachments: (taskId: string) => request<Attachment[]>(`/tasks/${taskId}/attachments`),
   uploadAttachment: (taskId: string, file: File) => upload<Attachment>(`/tasks/${taskId}/attachments`, file),
   downloadAttachment: (id: string) => download(`/attachments/${id}`),
