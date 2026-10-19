@@ -160,6 +160,9 @@ fun ProjectsScreen(viewModel: ProjectsViewModel, openProject: (String) -> Unit) 
                             LinearProgressIndicator(
                                 progress = { if (project.taskCount == 0) 0f else project.doneCount.toFloat() / project.taskCount },
                                 modifier = Modifier.fillMaxWidth(),
+                                // Barra contínua, igual à do site (sem o vão e o ponto final do Material 3).
+                                gapSize = 0.dp,
+                                drawStopIndicator = {},
                             )
                         }
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline)

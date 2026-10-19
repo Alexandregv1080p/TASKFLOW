@@ -291,7 +291,12 @@ private fun TaskContent(detail: TaskDetail, currentUserId: String, viewModel: Ta
                 if (subtasks.isNotEmpty()) {
                     val done = subtasks.count { it.status == TaskStatus.Done }
                     Text("$done de ${subtasks.size} concluídas", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    LinearProgressIndicator(progress = { done.toFloat() / subtasks.size }, modifier = Modifier.fillMaxWidth())
+                    LinearProgressIndicator(
+                        progress = { done.toFloat() / subtasks.size },
+                        modifier = Modifier.fillMaxWidth(),
+                        gapSize = 0.dp,
+                        drawStopIndicator = {},
+                    )
                 }
                 subtasks.forEach { sub ->
                     Row(

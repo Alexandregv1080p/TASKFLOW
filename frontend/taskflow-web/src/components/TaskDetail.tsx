@@ -287,7 +287,7 @@ export function TaskDetail() {
                           </option>
                         ))}
                     </select>
-                    {subtasks.length > 0 && <span className="field__hint">Tem subtarefas, então não pode virar subtarefa.</span>}
+                    {subtasks.length > 0 && !readOnly && <span className="field__hint">Tem subtarefas, então não pode virar subtarefa.</span>}
                   </dd>
 
                   <dt>Responsável</dt>

@@ -673,6 +673,15 @@ kbd {
     overflow-x: auto;
   }
 
+  .sidebar__link {
+    white-space: nowrap;
+  }
+
+  /* No celular a barra vira uma linha de atalhos: personalizar fica para a tela grande. */
+  .sidebar .sidebar__customize {
+    display: none;
+  }
+
   .sidebar__group {
     display: none;
   }
@@ -686,6 +695,7 @@ kbd {
 
 .page-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
   gap: 1rem;
@@ -706,6 +716,7 @@ kbd {
 
 .page-header__actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
 }
@@ -1797,8 +1808,9 @@ textarea {
   box-shadow: 0 0 0 2px var(--bg);
 }
 
+/* Sobreposição pequena: o círculo seguinte não cobre as iniciais do anterior. */
 .avatar-stack .avatar + .avatar {
-  margin-left: -8px;
+  margin-left: -4px;
 }
 
 .avatar-stack:active {
@@ -2287,6 +2299,18 @@ textarea {
 }
 
 /* Campos "sem cara de campo" até receberem hover/foco, como no Jira. */
+/* Campo travado (visualizador, projeto arquivado) não mostra a seta: não promete um menu que não abre. */
+.inline-select:disabled {
+  appearance: none;
+  cursor: default;
+  opacity: 1;
+  color: var(--text);
+}
+
+.status-select:has(select:disabled) svg {
+  display: none;
+}
+
 .inline-select,
 .inline-input {
   width: auto;
