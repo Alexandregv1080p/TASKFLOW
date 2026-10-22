@@ -17,6 +17,7 @@ using TaskFlow.Infrastructure.Antivirus;
 using TaskFlow.Infrastructure.Persistence;
 using TaskFlow.Infrastructure.Security;
 using TaskFlow.Infrastructure.Storage;
+using TaskFlow.Infrastructure.Webhooks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,8 +44,10 @@ builder.Services.AddSingleton(builder.Configuration.GetSection("Attachments").Ge
 // Anexos: Storage:Provider = Local (pasta; no Docker, o volume /app/data) ou S3 (bucket; MinIO no compose).
 var storage = builder.Configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
 var antivirus = builder.Configuration.GetSection("Antivirus").Get<AntivirusOptions>() ?? new AntivirusOptions();
+var webhooks = builder.Configuration.GetSection("Webhooks").Get<WebhookOptions>() ?? new WebhookOptions();
 builder.Services.AddInfrastructure(
-    connectionString, jwt, storage, Path.Combine(builder.Environment.ContentRootPath, "data", "attachments"), antivirus);
+    connectionString, jwt, storage, Path.Combine(builder.Environment.ContentRootPath, "data", "attachments"), antivirus, webhooks);
+builder.Services.AddHostedService<WebhookWorker>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();

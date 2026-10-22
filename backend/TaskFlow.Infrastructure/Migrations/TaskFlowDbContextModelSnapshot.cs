@@ -470,6 +470,88 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Webhook", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Secret")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("Webhooks", (string)null);
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.WebhookDelivery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int?>("LastStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("WebhookId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextAttemptAt")
+                        .HasFilter("\"Status\" = 'Pending'");
+
+                    b.HasIndex("WebhookId", "CreatedAt");
+
+                    b.ToTable("WebhookDeliveries", (string)null);
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.Goal", b =>
                 {
                     b.HasOne("TaskFlow.Domain.Entities.User", null)
@@ -659,6 +741,24 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.HasOne("TaskFlow.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Webhook", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.WebhookDelivery", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Webhook", null)
+                        .WithMany()
+                        .HasForeignKey("WebhookId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

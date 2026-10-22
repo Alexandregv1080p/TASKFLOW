@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Application.Common;
+using TaskFlow.Application.Webhooks;
 using TaskFlow.Infrastructure.Antivirus;
 using TaskFlow.Infrastructure.Persistence;
 using TaskFlow.Infrastructure.Security;
 using TaskFlow.Infrastructure.Storage;
+using TaskFlow.Infrastructure.Webhooks;
 
 namespace TaskFlow.Infrastructure;
 
@@ -16,12 +18,16 @@ public static class DependencyInjection
         JwtOptions jwt,
         StorageOptions storage,
         string defaultStoragePath,
-        AntivirusOptions antivirus)
+        AntivirusOptions antivirus,
+        WebhookOptions webhooks)
     {
         if (jwt.Secret.Length < JwtOptions.MinSecretLength)
             throw new InvalidOperationException($"Jwt:Secret must have at least {JwtOptions.MinSecretLength} characters.");
 
-        services.AddDbContext<TaskFlowDbContext>(options => options.UseNpgsql(connectionString));
+        // O outbox dos webhooks entra em todo SaveChanges (ver WebhookOutbox).
+        services.AddDbContext<TaskFlowDbContext>((sp, options) => options
+            .UseNpgsql(connectionString)
+            .AddInterceptors(sp.GetRequiredService<WebhookOutbox>()));
         services.AddScoped<ITaskFlowDbContext>(sp => sp.GetRequiredService<TaskFlowDbContext>());
 
         services.AddSingleton(jwt);
@@ -34,6 +40,9 @@ public static class DependencyInjection
 
         // Antivírus nos anexos: ClamAV quando há host configurado; senão, nada é verificado (a API avisa no log).
         services.AddSingleton<IVirusScanner>(string.IsNullOrWhiteSpace(antivirus.Host) ? new NoVirusScanner() : new ClamAvScanner(antivirus));
+
+        services.AddSingleton(webhooks);
+        services.AddSingleton<WebhookDispatcher>();
 
         return services;
     }

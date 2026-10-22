@@ -163,6 +163,30 @@ export interface Task {
 }
 
 // Tipo da tarefa (Bug, Integração...): cada projeto tem os seus, criados pelo dono.
+// Integração de saída: o TaskFlow avisa este endereço (POST assinado) quando algo muda no projeto.
+export interface Webhook {
+  id: string
+  url: string
+  secret: string
+  active: boolean
+  createdAt: string
+}
+
+export type WebhookDeliveryStatus = 'Pending' | 'Succeeded' | 'Failed'
+
+export interface WebhookDelivery {
+  id: string
+  event: string
+  status: WebhookDeliveryStatus
+  attempts: number
+  nextAttemptAt: string | null
+  lastStatusCode: number | null
+  lastError: string | null
+  createdAt: string
+  deliveredAt: string | null
+  payload: string
+}
+
 export interface TaskType {
   id: string
   name: string

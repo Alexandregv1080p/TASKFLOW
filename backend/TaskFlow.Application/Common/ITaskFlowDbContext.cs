@@ -35,6 +35,10 @@ public interface ITaskFlowDbContext
 
     DbSet<Notification> Notifications { get; }
 
+    DbSet<Webhook> Webhooks { get; }
+
+    DbSet<WebhookDelivery> WebhookDeliveries { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     // Espaço de anexos do projeto (Project.AttachmentBytes), mudado por UPDATE condicional no banco: "soma só se couber"

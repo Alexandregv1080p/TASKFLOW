@@ -34,6 +34,10 @@ public class TaskFlowDbContext(DbContextOptions<TaskFlowDbContext> options) : Db
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    public DbSet<Webhook> Webhooks => Set<Webhook>();
+
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+
     public async Task<bool> ReserveAttachmentBytesAsync(Guid projectId, long bytes, long quota, CancellationToken ct) =>
         await Projects
             .Where(p => p.Id == projectId && p.AttachmentBytes + bytes <= quota)

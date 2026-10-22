@@ -5,6 +5,7 @@ import {
   DownloadSimpleIcon,
   EyeIcon,
   PencilSimpleIcon,
+  PlugsConnectedIcon,
   TrashIcon,
   TagIcon,
   UserPlusIcon,
@@ -19,6 +20,7 @@ import { ProjectAvatar } from '../components/ProjectAvatar'
 import { ProjectForm } from '../components/ProjectForm'
 import { ProjectMembersDialog } from '../components/ProjectMembersDialog'
 import { TaskTypesDialog } from '../components/TaskTypesDialog'
+import { WebhooksDialog } from '../components/WebhooksDialog'
 import { useAsync } from '../hooks/useAsync'
 import { useLive } from '../hooks/useLive'
 import { api } from '../services/api'
@@ -67,6 +69,7 @@ export function ProjectDetails() {
   const [editing, setEditing] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
   const [typesOpen, setTypesOpen] = useState(false)
+  const [webhooksOpen, setWebhooksOpen] = useState(false)
   // Tipos de tarefa do projeto (Bug, Integração...), à parte do quadro: mudam pouco e têm diálogo próprio.
   const { data: types, reload: reloadTypes } = useAsync(() => api.listTaskTypes(id), [id])
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
@@ -235,6 +238,10 @@ export function ProjectDetails() {
                       <TagIcon size={16} aria-hidden="true" />
                       Tipos
                     </button>
+                    <button className="btn btn--ghost" onClick={() => setWebhooksOpen(true)} title="Avisar outros sistemas quando algo muda">
+                      <PlugsConnectedIcon size={16} aria-hidden="true" />
+                      Webhooks
+                    </button>
                     <button className="btn btn--ghost" onClick={() => setEditing(true)}>
                       <PencilSimpleIcon size={16} aria-hidden="true" />
                       Editar
@@ -309,6 +316,8 @@ export function ProjectDetails() {
         onMove={moveTask}
         onDelete={deleteTask}
       />
+
+      {webhooksOpen && <WebhooksDialog project={project} onClose={() => setWebhooksOpen(false)} />}
 
       {typesOpen && (
         <TaskTypesDialog project={project} types={types ?? []} onClose={() => setTypesOpen(false)} onChanged={reloadTypes} />

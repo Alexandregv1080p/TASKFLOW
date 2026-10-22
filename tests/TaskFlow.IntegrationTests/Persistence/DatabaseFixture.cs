@@ -18,7 +18,9 @@ public class DatabaseFixture : IAsyncLifetime
     public WebApplicationFactory<Program> Api { get; } = new WebApplicationFactory<Program>()
         .WithWebHostBuilder(b => b
             .UseSetting("ConnectionStrings:Default", ConnectionString)
-            .UseSetting("Storage:Path", StoragePath));
+            .UseSetting("Storage:Path", StoragePath)
+            // Os testes de webhook chamam o despachante na mão (WebhookTests); em segundo plano ele disputaria a fila.
+            .UseSetting("Webhooks:DispatcherEnabled", "false"));
 
     // Anexos dos testes numa pasta temporária, não dentro do repositório.
     public static readonly string StoragePath = Path.Combine(Path.GetTempPath(), "taskflow-test-attachments");

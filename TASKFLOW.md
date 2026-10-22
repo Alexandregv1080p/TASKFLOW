@@ -2359,6 +2359,27 @@ DELETE /api/attachments/{id}           (quem anexou ou o dono do projeto)
 * **No Android:** seção "Anexos" no detalhe da tarefa: anexar pelo seletor de arquivos do sistema, abrir no app do celular que lê o tipo (o arquivo vai para o cache do app e é entregue por `FileProvider`, sem permissão de armazenamento), excluir e ver o espaço do projeto. As recusas da API (tipo, tamanho, cota, antivírus) aparecem na tela.
 * **Fora do escopo por ora:** quarentena para revisão manual do que o antivírus bloqueia; cota por usuário ou por espaço.
 
+**Webhooks (integrações de saída).** O dono do projeto cadastra endereços (até 5) que recebem um POST em JSON a cada mudança: `task.created`, `task.updated` (título, descrição, prioridade, prazo, tipo, tarefa-pai), `task.status_changed`, `task.assigned`, `task.deleted`, `comment.created`, `attachment.added`, `attachment.removed`, e `ping` pelo botão "Enviar teste". No site: botão "Webhooks" no projeto, com ativar/desativar, segredo (mostrar, copiar, trocar), envio de teste e histórico das entregas (status, tentativas, resposta, conteúdo enviado e "Reenviar").
+
+```http
+GET    /api/projects/{id}/webhooks           (só o dono: o segredo permite forjar eventos)
+POST   /api/projects/{id}/webhooks           { "url" } → 201, com o segredo
+PUT    /api/webhooks/{id}                    { "url", "active" }
+POST   /api/webhooks/{id}/rotate-secret
+DELETE /api/webhooks/{id}
+POST   /api/webhooks/{id}/ping               → 202
+GET    /api/webhooks/{id}/deliveries         (as 30 mais recentes)
+POST   /api/webhook-deliveries/{id}/redeliver → 202
+```
+
+* **Outbox:** a entrega é gravada na mesma transação da alteração (um `SaveChangesInterceptor`, `WebhookOutbox`, olha o histórico novo, os comentários novos e as tarefas excluídas antes de cada `SaveChanges`). Se a alteração foi salva, o evento também foi; se a API cair antes de enviar, ele sai quando ela voltar. Um lugar só para todos os fluxos: o que registra histórico já vira evento.
+* **Despachante em segundo plano** (`WebhookDispatcher` + `WebhookWorker`, a cada 5 s): reserva um lote de entregas vencidas com `UPDATE ... FOR UPDATE SKIP LOCKED` que empurra a próxima tentativa para depois de um prazo. Várias réplicas da API dividem a fila sem pegar a mesma entrega, e uma entrega presa num processo que caiu volta sozinha para a fila. Garantia "pelo menos uma vez": quem recebe ignora repetidas pelo `X-TaskFlow-Delivery`.
+* **Novas tentativas:** resposta fora de 2xx, timeout (10 s) ou erro de rede agendam outra tentativa com espera dobrando (30 s, 1, 2, 4 e 8 min); depois de 6 tentativas a entrega fica como falha, e o dono pode reenviar (o mesmo conteúdo).
+* **Assinatura:** header `X-TaskFlow-Signature: t=<unix>,v1=<hex>`, HMAC-SHA256 de `<t>.<corpo>` com o segredo do webhook (formato do Stripe). Quem recebe recalcula, compara em tempo constante e recusa `t` antigo (proteção contra reenvio). Também vão `X-TaskFlow-Event` e `X-TaskFlow-Delivery`.
+* **SSRF:** a URL é de quem cadastrou, mas a requisição sai de dentro da nossa rede. O despachante resolve o nome na hora de conectar e recusa loopback, redes privadas, link-local (inclui o endereço de metadados da nuvem, 169.254.169.254), CGNAT e equivalentes IPv6; sem seguir redirecionamentos nem usar proxy, para um 302 não contornar a checagem. Checar no IP resolvido (e não só no cadastro) barra também o nome que passa a apontar para dentro depois (DNS rebinding). Em desenvolvimento, `Webhooks:AllowPrivateNetworks=true` libera para testar com um receptor local.
+* **Testes:** `WebhookTests` (integração) sobe um receptor HTTP de verdade e confere os eventos, a ordem, a assinatura e o conteúdo; a nova tentativa agendada e o reenvio; webhook desativado; o bloqueio de endereço interno; três despachantes esvaziando a mesma fila em paralelo (cada evento chega uma vez); permissões; e a classificação de endereços internos. Unitários do domínio para URL, segredo, espera e limite de tentativas. E2E `webhooks.spec.ts`: cadastra pelo site, vê o segredo, envia o teste e vê a entrega barrada (na stack, sem a liberação de desenvolvimento).
+* **Fora do escopo por ora:** escolher quais eventos cada webhook recebe (todos recebem tudo); desativar sozinho um webhook que falha há dias; limpar o histórico antigo de entregas; webhooks no app Android (configuração é tarefa de administrador, no site).
+
 ### App Android
 
 App companheiro em `mobile/taskflow-android`, feito para o uso do dia a dia no celular, não para repetir o site inteiro. Usa a mesma API e o mesmo hub de tempo real; o backend não mudou.

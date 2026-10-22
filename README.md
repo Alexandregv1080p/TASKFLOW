@@ -18,6 +18,7 @@ Gestão de projetos e tarefas no estilo do Jira, com quadro kanban colaborativo 
 - **Anexos** com antivírus (ClamAV), cota de espaço por projeto e armazenamento em disco ou S3.
 - **Organização:** espaços criados a partir de modelos (Kanban, Scrum, Roadmap...), página "Para você", diretório de projetos, metas, dashboard e busca global com `Ctrl+K`.
 - **Dados do usuário:** exportação das tarefas em CSV, pronta para o Excel.
+- **Webhooks:** outros sistemas recebem os eventos do projeto (tarefa criada, status, comentário...) por POST assinado, com novas tentativas e histórico de entregas.
 
 ## Capturas
 
@@ -57,6 +58,7 @@ A API segue Clean Architecture: `Domain` (entidades e regras), `Application` (ca
 - **Uma regra de acesso só.** Quem vê e quem altera cada projeto é decidido em um lugar (`ProjectAccess`) e usado por todos os casos de uso. Sem acesso, a API responde 404: não revela que o projeto existe.
 - **Tempo real que não vaza dados.** O SignalR só avisa "este projeto mudou"; quem recebe recarrega pela API REST, que já aplica as permissões. Não existe um segundo caminho de leitura para proteger.
 - **Anexos tratados como entrada não confiável:** lista de tipos permitidos, tipo decidido pela extensão (não pelo que o navegador declara), caminho em disco gerado pelo servidor, download sempre autenticado e forçado como arquivo, verificação no ClamAV antes de gravar e limpeza dos arquivos ao excluir tarefa ou projeto.
+- **Webhooks com outbox:** o evento é gravado na mesma transação da alteração e entregue por um worker em segundo plano, com novas tentativas (espera dobrando), assinatura HMAC no estilo Stripe e `FOR UPDATE SKIP LOCKED` para várias réplicas dividirem a fila. A URL é do usuário, então o envio barra endereços internos no IP resolvido na hora de conectar (SSRF, inclusive DNS rebinding).
 - **CSV seguro para planilha:** texto que começa com `=`, `+`, `-` ou `@` sai como texto, não como fórmula (injeção de CSV).
 - **Uma interface, duas implementações:** o armazenamento é `IFileStorage` (disco local ou S3), e os mesmos testes de contrato rodam contra as duas.
 - **Mesmas regras nos três clientes:** a chave da tarefa (`WEB-12`), as transições de status e a regra de menção são iguais na API, no site e no app, com os mesmos casos de teste.
@@ -66,9 +68,9 @@ A API segue Clean Architecture: `Domain` (entidades e regras), `Application` (ca
 
 | Onde | O que | Quantos |
 | --- | --- | --- |
-| Backend | Unitários (domínio) e integração contra PostgreSQL real, com a API em memória | 130+ |
-| Android | Comunicação com a API (JUnit + MockWebServer) e regras compartilhadas com o site | 15 |
-| Ponta a ponta | Playwright contra a stack completa em containers, incluindo duas pessoas em tempo real | 7 |
+| Backend | Unitários (domínio) e integração contra PostgreSQL real, com a API em memória | 155+ |
+| Android | Comunicação com a API (JUnit + MockWebServer) e regras compartilhadas com o site | 20 |
+| Ponta a ponta | Playwright contra a stack completa em containers, incluindo duas pessoas em tempo real | 8 |
 
 O CI (GitHub Actions) roda tudo isso em cada pull request: build e testes do backend (com um S3 de verdade para os testes de armazenamento), lint e build do site, testes, lint e APK do Android, e a stack inteira em Docker com smoke test e os testes de ponta a ponta. Na `main`, publica as imagens no GitHub Container Registry.
 
@@ -122,6 +124,26 @@ Cada um sobe com um perfil do compose:
 * Grafana: http://localhost:3001 (usuário `admin`, senha `GRAFANA_PASSWORD` do `.env`)
 * Prometheus: http://localhost:9090 (alvos em Status > Targets, regras em Alerts)
 * Logs estruturados em JSON: `docker logs taskflow-api`
+
+### Recebendo webhooks
+
+No projeto, botão **Webhooks** (só o dono). Para ver chegando sem escrever código, use uma URL de teste pública (como a do webhook.site) e clique em "Enviar teste". Endereços internos (localhost, redes privadas) são recusados fora do ambiente de desenvolvimento.
+
+Cada envio traz `X-TaskFlow-Event`, `X-TaskFlow-Delivery` (id único, para ignorar repetidas) e `X-TaskFlow-Signature: t=<unix>,v1=<hex>`. Para conferir, em Node:
+
+```js
+import crypto from 'node:crypto'
+
+// rawBody: o corpo exatamente como chegou (string), antes de qualquer JSON.parse.
+function isFromTaskFlow(rawBody, header, secret) {
+  const { t, v1 } = Object.fromEntries(header.split(',').map((part) => part.split('=')))
+  if (Math.abs(Date.now() / 1000 - Number(t)) > 300) return false // mais de 5 min: possível reenvio
+  const expected = crypto.createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex')
+  return v1?.length === expected.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(v1))
+}
+```
+
+Responda 2xx rápido; qualquer outra resposta (ou mais de 10 s) gera nova tentativa.
 
 ## Rodando para desenvolvimento
 

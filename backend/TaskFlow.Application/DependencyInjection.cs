@@ -8,6 +8,7 @@ using TaskFlow.Application.Projects;
 using TaskFlow.Application.Search;
 using TaskFlow.Application.Spaces;
 using TaskFlow.Application.Tasks;
+using TaskFlow.Application.Webhooks;
 
 namespace TaskFlow.Application;
 
@@ -28,6 +29,8 @@ public static class DependencyInjection
         services.AddScoped<GoalService>();
         services.AddScoped<NotificationService>();
         services.AddScoped<SearchService>();
+        services.AddScoped<WebhookService>();
+        services.AddScoped<WebhookOutbox>();
 
         return services;
     }
