@@ -28,6 +28,10 @@ Gestão de projetos e tarefas no estilo do Jira, com quadro kanban colaborativo 
 | **Notificações e "Para você"** | **Tema escuro** |
 | ![Notificações](docs/images/web-notificacoes.png) | ![Quadro no tema escuro](docs/images/web-quadro-escuro.png) |
 
+Webhooks: entregas assinadas com histórico, e a nova tentativa agendada quando o destino responde erro.
+
+<img src="docs/images/web-webhooks.png" width="560" alt="Diálogo de webhooks com entregas bem-sucedidas e uma nova tentativa agendada">
+
 App Android, com o mesmo tempo real:
 
 <p>
